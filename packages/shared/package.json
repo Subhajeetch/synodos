@@ -1,0 +1,19 @@
+{
+  "name": "@synodos/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@synodos/typescript-config": "workspace:*",
+    "typescript": "^7.0.2"
+  }
+}

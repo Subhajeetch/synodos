@@ -1,0 +1,4 @@
+{
+  "extends": "@synodos/typescript-config/base.json",
+  "include": ["src"]
+}

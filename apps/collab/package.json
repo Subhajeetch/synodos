@@ -1,0 +1,29 @@
+{
+  "name": "@synodos/collab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-database": "^4.7.0",
+    "@hocuspocus/extension-redis": "^4.7.0",
+    "@hocuspocus/server": "^4.7.0",
+    "@synodos/db": "workspace:*",
+    "@synodos/shared": "workspace:*",
+    "jose": "^6.2.12",
+    "yjs": "^13.6.33",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@synodos/typescript-config": "workspace:*",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
