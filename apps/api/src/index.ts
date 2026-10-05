@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
 import { env } from "./env";
+import { z } from "zod";
+import { documentRoutes } from "./routes/documents";
 
 const app = Fastify({ logger: true });
 
@@ -13,6 +15,19 @@ await app.register(cors, {
   credentials: true,
   maxAge: 86400,
 });
+
+app.setErrorHandler((err, request, reply) => {
+  if (err instanceof z.ZodError) {
+    return reply.code(400).send({ error: "Invalid request", issues: err.issues });
+  }
+  request.log.error(err);
+  const status = (err as { statusCode?: number }).statusCode ?? 500;
+  return reply.code(status).send({
+    error: status >= 500 ? "Internal server error" : (err as Error).message,
+  });
+});
+
+await app.register(documentRoutes, { prefix: "/api" });
 
 app.get("/health", async () => ({ status: "ok" }));
 
