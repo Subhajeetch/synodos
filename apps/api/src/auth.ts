@@ -8,7 +8,9 @@ import { env } from "./env";
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [env.WEB_ORIGIN],
+  trustedOrigins: Array.from(
+    new Set([env.WEB_ORIGIN, "http://localhost:5173", "http://127.0.0.1:5173"]),
+  ),
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: { enabled: true },
   socialProviders: {

@@ -3,7 +3,8 @@ import { AppLayout } from "@/components/app-layout";
 import { PublicOnly, RequireAuth } from "@/components/route-guards";
 import { LoginPage, SignupPage } from "@/pages/auth";
 import { EditorPage } from "@/pages/editor";
-import { OverviewPage } from "@/pages/overview";
+import OverviewPage from "@/pages/overview";
+import ProfilePage from "@/pages/profile";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />
           <Route path="/dashboard/overview" element={<OverviewPage />} />
+          <Route path="/dashboard/profile" element={<ProfilePage />} />
         </Route>
         {/* the editor gets its own full-screen layout later */}
         <Route path="/docs/:id" element={<EditorPage />} />

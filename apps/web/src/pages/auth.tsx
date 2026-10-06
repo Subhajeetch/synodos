@@ -1,16 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Command, Users, Zap, Shield } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
@@ -63,63 +55,149 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <div className="grid min-h-svh place-items-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>{isSignup ? "Create your account" : "Welcome back"}</CardTitle>
-          <CardDescription>
-            {isSignup ? "Start collaborating in seconds." : "Sign in to Synodos."}
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="grid gap-4">
-          <Button type="button" variant="outline" onClick={onGoogle}>
-            <GoogleIcon /> Continue with Google
-          </Button>
-
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            or
-            <div className="h-px flex-1 bg-border" />
+    <div className="flex min-h-svh flex-col md:flex-row">
+      <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-primary/90 to-primary p-10 text-primary-foreground md:flex lg:p-16 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+        <div className="relative z-10 flex items-center gap-2 font-medium">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary-foreground text-primary">
+            <Command className="size-5" />
+          </div>
+          <span className="text-xl font-bold tracking-tight">Synodos</span>
+        </div>
+        
+        <div className="relative z-10 space-y-6 max-w-md">
+          <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">
+            Where teams do their best work together.
+          </h1>
+          <p className="text-primary-foreground/80 text-lg">
+            Experience the next generation of collaborative document editing with real-time sync and powerful organizational tools.
+          </p>
+          
+          <div className="space-y-4 pt-8">
+            <div className="flex items-center gap-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/10">
+                <Zap className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Lightning Fast</h3>
+                <p className="text-sm text-primary-foreground/70">Real-time collaboration with zero lag.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/10">
+                <Users className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Built for Teams</h3>
+                <p className="text-sm text-primary-foreground/70">Granular permissions and shared workspaces.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/10">
+                <Shield className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Enterprise Security</h3>
+                <p className="text-sm text-primary-foreground/70">Your data is encrypted and secure at all times.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="relative z-10 text-sm text-primary-foreground/60">
+          © {new Date().getFullYear()} Synodos Inc. All rights reserved.
+        </div>
+      </div>
+      
+      <div className="flex w-full items-center justify-center p-6 md:w-1/2 lg:p-10 bg-background">
+        <div className="mx-auto w-full max-w-sm space-y-8">
+          <div className="space-y-2 text-center md:text-left">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {isSignup ? "Create an account" : "Welcome back"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isSignup ? "Enter your details to get started." : "Enter your credentials to sign in to your account."}
+            </p>
           </div>
 
-          <form onSubmit={onSubmit} className="grid gap-4">
-            {isSignup && (
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" required autoComplete="name" />
+          <div className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-4">
+              {isSignup && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input 
+                    id="name" 
+                    name="name" 
+                    required 
+                    autoComplete="name" 
+                    placeholder="John Doe"
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input 
+                  id="email" 
+                  name="email" 
+                  type="email" 
+                  required 
+                  autoComplete="email" 
+                  placeholder="name@example.com"
+                />
               </div>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required autoComplete="email" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete={isSignup ? "new-password" : "current-password"}
-              />
-            </div>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="animate-spin" />}
-              {isSignup ? "Sign up" : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete={isSignup ? "new-password" : "current-password"}
+                  placeholder="••••••••"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
+                {isSignup ? "Sign up" : "Sign in"}
+              </Button>
+            </form>
 
-        <CardFooter className="justify-center text-sm text-muted-foreground">
-          {isSignup ? (
-            <>Already have an account?&nbsp;<Link to="/login" className="underline">Sign in</Link></>
-          ) : (
-            <>New here?&nbsp;<Link to="/signup" className="underline">Create an account</Link></>
-          )}
-        </CardFooter>
-      </Card>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onGoogle}
+              className="w-full bg-background"
+            >
+              <GoogleIcon />
+              Google
+            </Button>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            {isSignup ? "Already have an account? " : "Don't have an account? "}
+            <Link 
+              to={isSignup ? "/login" : "/signup"} 
+              className="font-medium text-primary hover:underline"
+            >
+              {isSignup ? "Sign in" : "Sign up"}
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

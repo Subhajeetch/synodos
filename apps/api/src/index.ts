@@ -5,11 +5,16 @@ import { auth } from "./auth";
 import { env } from "./env";
 import { z } from "zod";
 import { documentRoutes } from "./routes/documents";
+import { userRoutes } from "./routes/users";
 
 const app = Fastify({ logger: true });
 
+const allowedOrigins = Array.from(
+  new Set([env.WEB_ORIGIN, "http://localhost:5173", "http://127.0.0.1:5173"]),
+);
+
 await app.register(cors, {
-  origin: env.WEB_ORIGIN,
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
@@ -28,6 +33,8 @@ app.setErrorHandler((err, request, reply) => {
 });
 
 await app.register(documentRoutes, { prefix: "/api" });
+await app.register(userRoutes, { prefix: "/api" });
+
 
 app.get("/health", async () => ({ status: "ok" }));
 

@@ -1,0 +1,178 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router";
+import { ArrowLeft, PanelRight, Users } from "lucide-react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { Placeholder } from "@tiptap/extensions";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import {
+  useHocuspocusEvent,
+  useHocuspocusProvider,
+} from "@hocuspocus/provider-react";
+import { canEdit, type DocumentSummary } from "@synodos/shared";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useOfflinePersistence } from "@/hooks/use-offline-persistence";
+import { usePresence } from "@/hooks/use-presence";
+import { authClient } from "@/lib/auth-client";
+import { userColor } from "@/lib/colors";
+import { cn } from "@/lib/utils";
+import { ConnectionStatus } from "./connection-status";
+import { EditorSidebar } from "./editor-sidebar";
+import { EditorToolbar } from "./editor-toolbar";
+import { PresenceAvatars } from "./presence";
+import { SyncErrorBanner } from "./sync-error-banner";
+import { TitleInput } from "./title-input";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { documentKeys } from "@/hooks/use-documents";
+
+/** Must be rendered inside <HocuspocusRoom>. */
+export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
+  const provider = useHocuspocusProvider();
+  const { data: session } = authClient.useSession();
+  const userId = session?.user.id;
+
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const { savedLocally, clear } = useOfflinePersistence(
+    provider.document,
+    doc.id,
+    userId,
+  );
+  const users = usePresence(userId);
+
+  const queryClient = useQueryClient();
+
+  useHocuspocusEvent("authenticationFailed", ({ reason }) => {
+    console.warn("Collab authentication failed:", reason);
+    setSyncError(reason);
+  });
+    useHocuspocusEvent("authenticated", () => {
+    setSyncError(null);
+    void queryClient.invalidateQueries({ queryKey: documentKeys.detail(doc.id) });
+  });
+
+  const lostAccess = syncError === "Forbidden";
+  const editable = canEdit(doc.role) && !lostAccess;
+
+  // Access revoked: don't keep a readable local copy around.
+  useEffect(() => {
+    if (lostAccess) void clear();
+  }, [lostAccess, clear]);
+
+  useEffect(() => {
+    document.title = `${doc.title} · Synodos`;
+    return () => {
+      document.title = "Synodos";
+    };
+  }, [doc.title]);
+
+  const user = {
+    id: userId ?? "anonymous", // `id` lets presence dedupe multiple tabs
+    name: session?.user.name ?? "Anonymous",
+    color: userColor(userId ?? "anonymous"),
+  };
+
+  const editor = useEditor(
+    {
+      editable,
+      extensions: [
+        // Yjs handles undo/redo; TipTap's own history would fight it.
+        StarterKit.configure({ undoRedo: false }),
+        Placeholder.configure({ placeholder: "Start writing…" }),
+        Collaboration.configure({ document: provider.document }),
+        CollaborationCaret.configure({ provider, user }),
+      ],
+      editorProps: {
+        attributes: {
+          class:
+            "prose prose-neutral max-w-none min-h-[70vh] text-neutral-950 focus:outline-none " +
+            "prose-headings:text-neutral-950 prose-p:text-neutral-800 prose-strong:text-neutral-950 " +
+            "prose-code:text-neutral-950 prose-code:before:content-none prose-code:after:content-none",
+        },
+      },
+    },
+    [provider],
+  );
+
+  useEffect(() => {
+    editor?.setEditable(editable);
+  }, [editor, editable]);
+
+  if (!editor) return null;
+
+  return (
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <header className="flex h-14 shrink-0 items-center gap-3 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 border-b border-border/40 shadow-sm">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Back to dashboard"
+          className="text-muted-foreground hover:text-foreground"
+          nativeButton={false}
+          render={<Link to="/dashboard/overview" />}
+        >
+          <ArrowLeft className="size-4" />
+        </Button>
+
+        <div className="flex items-center gap-2">
+          <TitleInput key={doc.title} doc={doc} readOnly={!editable} />
+          {!editable && <Badge variant="secondary" className="px-2 font-medium bg-secondary/50 text-secondary-foreground/80 hover:bg-secondary/50">View only</Badge>}
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          <div className="hidden sm:block">
+            <PresenceAvatars users={users} />
+          </div>
+          <div className="hidden sm:flex items-center gap-3 text-sm">
+            <div className="h-4 w-px bg-border" />
+            <ConnectionStatus savedLocally={savedLocally} />
+          </div>
+          <ThemeToggle />
+          <div className="h-4 w-px bg-border/60" />
+          <Button
+            variant={sidebarOpen ? "secondary" : "ghost"}
+            size="sm"
+            className={cn(
+              "h-8 gap-1.5 px-2.5 text-xs font-medium transition-colors",
+              sidebarOpen && "bg-secondary text-foreground",
+            )}
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-label="Toggle document sidebar"
+          >
+            <Users className="size-3.5 text-primary" />
+            <span className="font-semibold">{users.length}</span>
+            <PanelRight className={cn("size-3.5 transition-transform", !sidebarOpen && "opacity-60")} />
+          </Button>
+        </div>
+      </header>
+
+      {syncError && <SyncErrorBanner reason={syncError} />}
+
+      <EditorToolbar editor={editor} disabled={!editable} />
+
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-muted/30 dark:bg-[#111113]">
+        <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8">
+          <div className="mx-auto min-h-[calc(100dvh-12rem)] max-w-4xl rounded-xl bg-white px-8 py-12 text-neutral-950 shadow-sm ring-1 ring-neutral-200/50 sm:px-12 lg:px-16 transition-shadow hover:shadow-md">
+            <EditorContent editor={editor} />
+          </div>
+        </main>
+
+        {sidebarOpen && (
+          <EditorSidebar
+            doc={doc}
+            role={doc.role}
+            users={users}
+            onClose={() => setSidebarOpen(false)}
+            className="fixed inset-y-14 right-0 z-30 w-full sm:static sm:inset-auto sm:w-80 md:w-88 border-l border-border/50 shrink-0 shadow-lg sm:shadow-none"
+          />
+        )}
+      </div>
+    </div>
+  );
+}

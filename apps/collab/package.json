@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "check-types": "tsc"
+    "check-types": "tsc",
+    "smoke": "tsx --env-file=../../.env scripts/smoke.ts"
   },
   "dependencies": {
     "@hocuspocus/extension-database": "^4.7.0",
@@ -16,11 +17,13 @@
     "@hocuspocus/server": "^4.7.0",
     "@synodos/db": "workspace:*",
     "@synodos/shared": "workspace:*",
+    "ioredis": "^6.0.0",
     "jose": "^6.2.12",
     "yjs": "^13.6.33",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@hocuspocus/provider": "^4.7.0",
     "@synodos/typescript-config": "workspace:*",
     "@types/node": "^26.6.4",
     "tsx": "^4.23.15",

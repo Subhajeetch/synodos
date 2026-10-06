@@ -1,18 +1,20 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { and, desc, eq, getDocumentRole, schema } from "@synodos/db";
+import { and, desc, eq, getDocumentRole, schema, sql } from "@synodos/db";
 import {
   addMemberSchema,
   canEdit,
   canManageMembers,
   createDocumentSchema,
   documentIdParamSchema,
+  MAX_DOCUMENT_MEMBERS,
   updateDocumentSchema,
   type DocumentSummary,
 } from "@synodos/shared";
 
 import { db } from "../db";
 import { requireUser } from "../lib/require-user";
+import { publishAccessChanged } from "../lib/access-events";
 
 const { documents, documentMembers, user: users } = schema;
 
@@ -21,7 +23,7 @@ const memberParamSchema = documentIdParamSchema.extend({ userId: z.string().min(
 export const documentRoutes: FastifyPluginAsync = async (app) => {
   app.addHook("preHandler", requireUser);
 
-  // List every document the user can access
+  // list every document the user can access
   app.get("/documents", async (request): Promise<DocumentSummary[]> => {
     const rows = await db
       .select({
@@ -111,11 +113,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     if (!role) return reply.code(404).send({ error: "Not found" });
     if (role !== "owner") return reply.code(403).send({ error: "Forbidden" });
 
-    await db.delete(documents).where(eq(documents.id, id)); // members/state cascade
+    await db.delete(documents).where(eq(documents.id, id));
+    await publishAccessChanged({ documentId: id, userId: null }); // kick everyone
     return reply.code(204).send();
   });
-
-  // ---- Members ----
 
   app.get("/documents/:id/members", async (request, reply) => {
     const { id } = documentIdParamSchema.parse(request.params);
@@ -127,6 +128,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         userId: users.id,
         name: users.name,
         email: users.email,
+        image: users.image,
         role: documentMembers.role,
       })
       .from(documentMembers)
@@ -143,7 +145,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     if (!canManageMembers(role)) return reply.code(403).send({ error: "Forbidden" });
 
     const [target] = await db
-      .select({ id: users.id, name: users.name, email: users.email })
+      .select({ id: users.id, name: users.name, email: users.email, image: users.image })
       .from(users)
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);
@@ -153,20 +155,74 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ error: "Cannot change the owner's role" });
     }
 
-    await db
-      .insert(documentMembers)
-      .values({ documentId: id, userId: target.id, role: body.role })
-      .onConflictDoUpdate({
-        target: [documentMembers.documentId, documentMembers.userId],
-        set: { role: body.role },
-      });
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select id from documents where id = ${id} for update`);
+
+      const current = await tx
+        .select({ userId: documentMembers.userId, role: documentMembers.role })
+        .from(documentMembers)
+        .where(eq(documentMembers.documentId, id));
+
+      const existing = current.find((m) => m.userId === target.id);
+      if (!existing && current.length >= MAX_DOCUMENT_MEMBERS) {
+        return { status: "full" as const };
+      }
+
+      await tx
+        .insert(documentMembers)
+        .values({ documentId: id, userId: target.id, role: body.role })
+        .onConflictDoUpdate({
+          target: [documentMembers.documentId, documentMembers.userId],
+          set: { role: body.role },
+        });
+
+      return {
+        status: "ok" as const,
+        roleChanged: existing !== undefined && existing.role !== body.role,
+      };
+    });
+
+    if (result.status === "full") {
+      return reply
+        .code(409)
+        .send({ error: `A document can have at most ${MAX_DOCUMENT_MEMBERS} members` });
+    }
+
+    // Publish event so any active socket or listening client updates immediately
+    await publishAccessChanged({ documentId: id, userId: target.id });
 
     return reply.code(201).send({
       userId: target.id,
       name: target.name,
       email: target.email,
+      image: target.image,
       role: body.role,
     });
+  });
+
+  // Update a member's role (e.g. editor <-> viewer)
+  app.patch("/documents/:id/members/:userId", async (request, reply) => {
+    const { id, userId } = memberParamSchema.parse(request.params);
+    const body = z.object({ role: z.enum(["editor", "viewer"]) }).parse(request.body);
+
+    const callerRole = await getDocumentRole(db, request.user.id, id);
+    if (!callerRole) return reply.code(404).send({ error: "Not found" });
+    if (!canManageMembers(callerRole)) return reply.code(403).send({ error: "Forbidden" });
+
+    const targetRole = await getDocumentRole(db, userId, id);
+    if (!targetRole) return reply.code(404).send({ error: "Member not found" });
+    if (targetRole === "owner") {
+      return reply.code(400).send({ error: "Cannot change the owner's role" });
+    }
+
+    await db
+      .update(documentMembers)
+      .set({ role: body.role })
+      .where(and(eq(documentMembers.documentId, id), eq(documentMembers.userId, userId)));
+
+    await publishAccessChanged({ documentId: id, userId });
+
+    return reply.send({ userId, role: body.role });
   });
 
   app.delete("/documents/:id/members/:userId", async (request, reply) => {
@@ -183,6 +239,8 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     await db
       .delete(documentMembers)
       .where(and(eq(documentMembers.documentId, id), eq(documentMembers.userId, userId)));
+
+    await publishAccessChanged({ documentId: id, userId });
     return reply.code(204).send();
   });
 };
