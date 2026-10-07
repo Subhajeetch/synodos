@@ -1,26 +1,33 @@
 import type { PresenceUser } from "@/hooks/use-presence";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export function UserAvatar({
   name,
   color,
+  image,
   className,
 }: {
   name: string;
   color: string;
+  image?: string | null;
   className?: string;
 }) {
   return (
-    <div
+    <Avatar
       title={name}
-      style={{ backgroundColor: color }}
-      className={cn(
-        "flex size-7 items-center justify-center rounded-full text-xs font-semibold text-white ring-2 ring-background",
-        className,
-      )}
+      className={cn("size-7 ring-2 ring-background", className)}
     >
-      {name.trim().charAt(0).toUpperCase() || "?"}
-    </div>
+      {image && (
+        <AvatarImage src={image} alt={name} referrerPolicy="no-referrer" />
+      )}
+      <AvatarFallback
+        style={{ backgroundColor: color, color: "#fff" }}
+        className="text-xs font-semibold"
+      >
+        {name.trim().charAt(0).toUpperCase() || "?"}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -31,12 +38,16 @@ export function PresenceAvatars({ users }: { users: PresenceUser[] }) {
   const extra = users.length - shown.length;
 
   return (
-    <div className="flex items-center -space-x-2" aria-label={`${users.length} online`}>
+    <div
+      className="flex items-center -space-x-2"
+      aria-label={`${users.length} online`}
+    >
       {shown.map((u) => (
         <UserAvatar
           key={u.id}
           name={u.isYou ? `${u.name} (you)` : u.name}
           color={u.color}
+          image={u.avatar}
         />
       ))}
       {extra > 0 && (
@@ -62,10 +73,12 @@ export function CollaboratorsPanel({ users }: { users: PresenceUser[] }) {
         <ul className="grid gap-2">
           {users.map((u) => (
             <li key={u.id} className="flex items-center gap-2">
-              <UserAvatar name={u.name} color={u.color} />
+              <UserAvatar name={u.name} color={u.color} image={u.avatar} />
               <span className="min-w-0 flex-1 truncate text-sm">
                 {u.name}
-                {u.isYou && <span className="text-muted-foreground"> (you)</span>}
+                {u.isYou && (
+                  <span className="text-muted-foreground"> (you)</span>
+                )}
               </span>
               {u.connections > 1 && (
                 <span className="text-xs text-muted-foreground">

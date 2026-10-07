@@ -19,9 +19,13 @@ export function useOfflinePersistence(
       ydoc,
     );
     ref.current = persistence;
-    void persistence.whenSynced.then(() => {
-      if (!cancelled) setSavedLocally(true);
-    });
+    void persistence.whenSynced
+      .then(() => {
+        if (!cancelled) setSavedLocally(true);
+      })
+      .catch((error: unknown) => {
+        console.error("Could not initialize offline document storage:", error);
+      });
 
     return () => {
       cancelled = true;

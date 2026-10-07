@@ -1,0 +1,1 @@
+ALTER TABLE "document_join_requests" ADD COLUMN "status" text DEFAULT 'pending' NOT NULL;

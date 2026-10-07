@@ -25,6 +25,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? DASHBOARD;
   const isSignup = mode === "signup";
+  const isReauth = !isSignup && new URLSearchParams(location.search).get("reauth") === "1";
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -35,23 +36,32 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     const name = String(form.get("name") ?? "");
 
     setLoading(true);
-    const { error } = isSignup
-      ? await authClient.signUp.email({ email, password, name })
-      : await authClient.signIn.email({ email, password });
-    setLoading(false);
+    try {
+      const { error } = isSignup
+        ? await authClient.signUp.email({ email, password, name })
+        : await authClient.signIn.email({ email, password });
 
-    if (error) {
-      toast.error(error.message ?? "Something went wrong");
-      return;
+      if (error) {
+        toast.error(error.message ?? "Something went wrong");
+        return;
+      }
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    navigate(from, { replace: true });
   }
 
   async function onGoogle() {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: `${window.location.origin}${from}`,
-    });
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: `${window.location.origin}${from}`,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
+    }
   }
 
   return (
@@ -113,10 +123,14 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <div className="mx-auto w-full max-w-sm space-y-8">
           <div className="space-y-2 text-center md:text-left">
             <h1 className="text-3xl font-semibold tracking-tight">
-              {isSignup ? "Create an account" : "Welcome back"}
+              {isSignup ? "Create an account" : isReauth ? "Sign in again" : "Welcome back"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isSignup ? "Enter your details to get started." : "Enter your credentials to sign in to your account."}
+              {isSignup
+                ? "Enter your details to get started."
+                : isReauth
+                  ? "Sign in to restore live collaboration. We’ll return you to your document."
+                  : "Enter your credentials to sign in to your account."}
             </p>
           </div>
 

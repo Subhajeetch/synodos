@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowLeft, PanelRight, Users } from "lucide-react";
+import { ArrowLeft, PanelRight, UserPlus, Users } from "lucide-react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
@@ -10,10 +10,28 @@ import {
   useHocuspocusEvent,
   useHocuspocusProvider,
 } from "@hocuspocus/provider-react";
-import { canEdit, type DocumentSummary } from "@synodos/shared";
+import {
+  canEdit,
+  canManageMembers,
+  MAX_DOCUMENT_MEMBERS,
+  type DocumentSummary,
+} from "@synodos/shared";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  documentKeys,
+  notifyAccessRequest,
+  notifyMemberJoined,
+  notifyPresenceChange,
+  useDocumentMembers,
+  useDocumentSharing,
+} from "@/hooks/use-documents";
 import { useOfflinePersistence } from "@/hooks/use-offline-persistence";
 import { usePresence } from "@/hooks/use-presence";
 import { authClient } from "@/lib/auth-client";
@@ -22,12 +40,12 @@ import { cn } from "@/lib/utils";
 import { ConnectionStatus } from "./connection-status";
 import { EditorSidebar } from "./editor-sidebar";
 import { EditorToolbar } from "./editor-toolbar";
+import { InviteMemberDialog } from "./invite-member-dialog";
 import { PresenceAvatars } from "./presence";
 import { SyncErrorBanner } from "./sync-error-banner";
 import { TitleInput } from "./title-input";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { documentKeys } from "@/hooks/use-documents";
 
 /** Must be rendered inside <HocuspocusRoom>. */
 export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
@@ -37,31 +55,132 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [retryingSync, setRetryingSync] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   const { savedLocally, clear } = useOfflinePersistence(
     provider.document,
     doc.id,
     userId,
   );
+  const isOwner = canManageMembers(doc.role);
+  const { data: members, isPending: membersPending } = useDocumentMembers(
+    doc.id,
+    isOwner,
+  );
+  const { data: sharing } = useDocumentSharing(doc.id, isOwner);
   const users = usePresence(userId);
+  const previousOnlineUsers = useRef<Set<string>>(new Set());
+  const previousMemberIds = useRef<Set<string>>(new Set());
+  const previousRequestIds = useRef<Set<string>>(new Set());
+  const initializedPresence = useRef(false);
+  const initializedMembers = useRef(false);
+  const initializedRequests = useRef(false);
 
   const queryClient = useQueryClient();
 
   useHocuspocusEvent("authenticationFailed", ({ reason }) => {
     console.warn("Collab authentication failed:", reason);
     setSyncError(reason);
+    setRetryingSync(false);
   });
-    useHocuspocusEvent("authenticated", () => {
+  useHocuspocusEvent("authenticated", () => {
     setSyncError(null);
-    void queryClient.invalidateQueries({ queryKey: documentKeys.detail(doc.id) });
+    setRetryingSync(false);
+    void queryClient.invalidateQueries({
+      queryKey: documentKeys.detail(doc.id),
+    });
   });
 
   const lostAccess = syncError === "Forbidden";
   const editable = canEdit(doc.role) && !lostAccess;
+  const reservedCollaborators = new Set([
+    ...(members ?? []).map((member) => member.userId),
+    ...(sharing?.invitations ?? []).map((invitation) => invitation.userId),
+    ...(sharing?.requests ?? []).map((request) => request.userId),
+  ]).size;
+  const memberLimitReached = reservedCollaborators >= MAX_DOCUMENT_MEMBERS;
+
+  useEffect(() => {
+    if (membersPending || !members) return;
+    const onlineIds = new Set(
+      users
+        .filter((presenceUser) => !presenceUser.isYou)
+        .map((user) => user.id),
+    );
+    if (!initializedPresence.current) {
+      if (!users.some((presenceUser) => presenceUser.isYou)) return;
+
+      const timeout = window.setTimeout(() => {
+        previousOnlineUsers.current = onlineIds;
+        initializedPresence.current = true;
+      }, 800);
+      return () => window.clearTimeout(timeout);
+    }
+
+    for (const userId of onlineIds) {
+      if (previousOnlineUsers.current.has(userId)) continue;
+      const member = members.find((item) => item.userId === userId);
+      if (member) notifyPresenceChange(member, true);
+    }
+    for (const userId of previousOnlineUsers.current) {
+      if (onlineIds.has(userId)) continue;
+      const member = members.find((item) => item.userId === userId);
+      if (member) notifyPresenceChange(member, false);
+    }
+    previousOnlineUsers.current = onlineIds;
+  }, [members, membersPending, users]);
+
+  useEffect(() => {
+    if (!isOwner || membersPending || !members) return;
+    const memberIds = new Set(members.map((member) => member.userId));
+    if (!initializedMembers.current) {
+      previousMemberIds.current = memberIds;
+      initializedMembers.current = true;
+      return;
+    }
+    for (const member of members) {
+      if (!previousMemberIds.current.has(member.userId)) {
+        notifyMemberJoined(member);
+      }
+    }
+    previousMemberIds.current = memberIds;
+  }, [isOwner, members, membersPending]);
+
+  useEffect(() => {
+    if (!sharing) return;
+    const requestIds = new Set(sharing.requests.map((request) => request.id));
+    if (!initializedRequests.current) {
+      previousRequestIds.current = requestIds;
+      initializedRequests.current = true;
+      return;
+    }
+    for (const request of sharing.requests) {
+      if (!previousRequestIds.current.has(request.id)) {
+        notifyAccessRequest(request);
+      }
+    }
+    previousRequestIds.current = requestIds;
+  }, [sharing]);
+
+  async function retrySync() {
+    setRetryingSync(true);
+    try {
+      await provider.connect();
+    } catch (error) {
+      console.error("Could not reconnect to collaboration:", error);
+      setSyncError("Connection failed. Please try again.");
+      setRetryingSync(false);
+    }
+  }
 
   // Access revoked: don't keep a readable local copy around.
   useEffect(() => {
-    if (lostAccess) void clear();
+    if (lostAccess) {
+      void clear().catch((error) => {
+        console.error("Could not clear the offline document copy:", error);
+      });
+    }
   }, [lostAccess, clear]);
 
   useEffect(() => {
@@ -74,6 +193,7 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   const user = {
     id: userId ?? "anonymous", // `id` lets presence dedupe multiple tabs
     name: session?.user.name ?? "Anonymous",
+    avatar: session?.user.image ?? null,
     color: userColor(userId ?? "anonymous"),
   };
 
@@ -121,7 +241,14 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
 
         <div className="flex items-center gap-2">
           <TitleInput key={doc.title} doc={doc} readOnly={!editable} />
-          {!editable && <Badge variant="secondary" className="px-2 font-medium bg-secondary/50 text-secondary-foreground/80 hover:bg-secondary/50">View only</Badge>}
+          {!editable && (
+            <Badge
+              variant="secondary"
+              className="px-2 font-medium bg-secondary/50 text-secondary-foreground/80 hover:bg-secondary/50"
+            >
+              View only
+            </Badge>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-3">
@@ -147,12 +274,65 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
           >
             <Users className="size-3.5 text-primary" />
             <span className="font-semibold">{users.length}</span>
-            <PanelRight className={cn("size-3.5 transition-transform", !sidebarOpen && "opacity-60")} />
+            <PanelRight
+              className={cn(
+                "size-3.5 transition-transform",
+                !sidebarOpen && "opacity-60",
+              )}
+            />
           </Button>
+
+          {canManageMembers(doc.role) && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    className="inline-flex"
+                    tabIndex={memberLimitReached ? 0 : undefined}
+                    aria-label={
+                      memberLimitReached
+                        ? `Maximum of ${MAX_DOCUMENT_MEMBERS} collaborators reached`
+                        : undefined
+                    }
+                  />
+                }
+              >
+                <Button
+                  className="h-8"
+                  onClick={() => setInviteDialogOpen(true)}
+                  disabled={memberLimitReached}
+                >
+                  <UserPlus className="size-4" />
+                  Invite
+                </Button>
+              </TooltipTrigger>
+              {memberLimitReached && (
+                <TooltipContent>
+                  Maximum of {MAX_DOCUMENT_MEMBERS} collaborators per document,
+                  including the owner and pending invitations or requests.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          )}
         </div>
       </header>
 
-      {syncError && <SyncErrorBanner reason={syncError} />}
+      {inviteDialogOpen && (
+        <InviteMemberDialog
+          doc={doc}
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+        />
+      )}
+
+      {syncError && (
+        <SyncErrorBanner
+          reason={syncError}
+          retrying={retryingSync}
+          localCopyAvailable={savedLocally}
+          onRetry={() => void retrySync()}
+        />
+      )}
 
       <EditorToolbar editor={editor} disabled={!editable} />
 

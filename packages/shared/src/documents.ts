@@ -34,6 +34,34 @@ export type DocumentMember = {
   role: DocumentRole;
 };
 
+export type DocumentInvitation = {
+  id: string;
+  userId: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  role: Exclude<DocumentRole, "owner">;
+  createdAt: string;
+};
+
+export type DocumentJoinRequest = {
+  id: string;
+  userId: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  createdAt: string;
+};
+
+export type DocumentSharingOverview = {
+  invitations: DocumentInvitation[];
+  requests: DocumentJoinRequest[];
+};
+
+export type DocumentAccessStatus = {
+  status: "invited" | "requested" | "rejected" | "none";
+};
+
 export type UserSearchItem = {
   id: string;
   name: string | null;
@@ -47,4 +75,3 @@ export type DocumentSummary = {
   role: DocumentRole;
   updatedAt: string;
 };
-

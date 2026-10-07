@@ -68,7 +68,11 @@ const server = new Server({
       });
       if (!payload.sub) throw new Error("Missing subject");
       userId = payload.sub;
-    } catch {
+    } catch (error) {
+      console.error(
+        "[auth] collaboration token verification failed:",
+        error instanceof Error ? error.message : "Unknown verification error",
+      );
       throw new Error("Unauthorized");
     }
 

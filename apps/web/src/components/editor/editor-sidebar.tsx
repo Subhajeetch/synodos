@@ -7,37 +7,101 @@ import {
   FileText,
   History,
   Info,
+  Inbox,
   Link2,
   MessageSquare,
   PanelRightClose,
+  RotateCcw,
+  Settings2,
   Share2,
   Trash2,
-  UserPlus,
-  Users,
+  X,
   type LucideIcon,
+  CircleFadingPlus,
 } from "lucide-react";
-import { canManageMembers, MAX_DOCUMENT_MEMBERS, type DocumentRole, type DocumentSummary } from "@synodos/shared";
+import {
+  canManageMembers,
+  MAX_DOCUMENT_MEMBERS,
+  type DocumentMember,
+  type DocumentRole,
+  type DocumentJoinRequest,
+  type DocumentInvitation,
+  type DocumentSummary,
+} from "@synodos/shared";
 import { RoleBadge } from "@/components/documents/role-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  useAddDocumentMember,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  useApproveJoinRequest,
   useDocumentMembers,
+  useDocumentSharing,
+  useRejectJoinRequest,
+  useRevokeDocumentInvitation,
   useRemoveDocumentMember,
 } from "@/hooks/use-documents";
 import type { PresenceUser } from "@/hooks/use-presence";
+import { ApiError } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { UserAvatar } from "./presence";
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+
+type ConfirmationAction =
+  | { kind: "approve"; request: DocumentJoinRequest }
+  | { kind: "reject"; request: DocumentJoinRequest }
+  | { kind: "revoke"; invitation: DocumentInvitation }
+  | { kind: "remove"; member: DocumentMember };
 
 const UPCOMING_FEATURES: { icon: LucideIcon; title: string; hint: string }[] = [
-  { icon: History, title: "Version history", hint: "Restore earlier snapshots and view audit log" },
-  { icon: MessageSquare, title: "Inline comments", hint: "Leave feedback on selected text" },
-  { icon: Download, title: "Export formats", hint: "Download as Markdown, HTML, or PDF" },
+  {
+    icon: History,
+    title: "Version history",
+    hint: "Restore earlier snapshots and view audit log",
+  },
+  {
+    icon: MessageSquare,
+    title: "Inline comments",
+    hint: "Leave feedback on selected text",
+  },
+  {
+    icon: Download,
+    title: "Export formats",
+    hint: "Download as Markdown, HTML, or PDF",
+  },
 ];
+
+function permissionDescription(role: DocumentRole) {
+  switch (role) {
+    case "owner":
+      return "Owns this document and can edit it, manage collaborators, and change access.";
+    case "editor":
+      return "Can edit the document and collaborate with others in real time.";
+    case "viewer":
+      return "Can read the document but cannot make changes.";
+  }
+}
 
 export function EditorSidebar({
   role,
@@ -53,14 +117,56 @@ export function EditorSidebar({
   onClose?: () => void;
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("editor");
-
-  const { data: members = [], isPending: membersPending } = useDocumentMembers(doc.id);
-  const addMember = useAddDocumentMember(doc.id);
-  const removeMember = useRemoveDocumentMember(doc.id);
-
+  const [confirmation, setConfirmation] = useState<ConfirmationAction | null>(
+    null,
+  );
   const isOwner = canManageMembers(role);
+  const {
+    preferences: notificationPreferences,
+    setSoundEnabled,
+    setPopupEnabled,
+  } = useNotificationPreferences();
+
+  const {
+    data: members,
+    isPending: membersPending,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useDocumentMembers(doc.id, isOwner);
+  const {
+    data: sharing,
+    error: sharingLoadError,
+    isPending: sharingPending,
+    isError: sharingError,
+    refetch: refetchSharing,
+  } = useDocumentSharing(doc.id, canManageMembers(role));
+  const removeMember = useRemoveDocumentMember(doc.id);
+  const approveRequest = useApproveJoinRequest(doc.id);
+  const rejectRequest = useRejectJoinRequest(doc.id);
+  const revokeInvitation = useRevokeDocumentInvitation(doc.id);
+
+  const onlineUsersById = new Map(users.map((user) => [user.id, user]));
+  const reservedIds = new Set([
+    ...(members ?? []).map((member) => member.userId),
+    ...(sharing?.invitations ?? []).map((invitation) => invitation.userId),
+    ...(sharing?.requests ?? []).map((request) => request.userId),
+  ]);
+  const confirmationPending =
+    removeMember.isPending ||
+    approveRequest.isPending ||
+    rejectRequest.isPending ||
+    revokeInvitation.isPending;
+  const retrySharing = () => {
+    void refetchSharing();
+  };
+  const sharingErrorDescription =
+    sharingLoadError instanceof ApiError
+      ? sharingLoadError.status >= 500
+        ? `The server returned an error (${sharingLoadError.status}).`
+        : `${sharingLoadError.message} (HTTP ${sharingLoadError.status}).`
+      : sharingLoadError instanceof Error
+        ? sharingLoadError.message
+        : "An unexpected error occurred while loading sharing details.";
 
   const handleCopyLink = async () => {
     try {
@@ -73,19 +179,53 @@ export function EditorSidebar({
     }
   };
 
-  const handleInvite = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
+  function confirmAction() {
+    if (!confirmation) return;
+    const close = () => setConfirmation(null);
+    if (confirmation.kind === "approve") {
+      approveRequest.mutate(confirmation.request.id, { onSuccess: close });
+    } else if (confirmation.kind === "reject") {
+      rejectRequest.mutate(confirmation.request, { onSuccess: close });
+    } else if (confirmation.kind === "revoke") {
+      revokeInvitation.mutate(confirmation.invitation, { onSuccess: close });
+    } else {
+      removeMember.mutate(confirmation.member, { onSuccess: close });
+    }
+  }
 
-    addMember.mutate(
-      { email: inviteEmail.trim(), role: inviteRole },
-      {
-        onSuccess: () => {
-          setInviteEmail("");
-        },
-      },
-    );
-  };
+  const confirmationCopy = (() => {
+    if (!confirmation) return null;
+    if (confirmation.kind === "approve") {
+      return {
+        title: "Grant document access?",
+        description: `${confirmation.request.name || confirmation.request.email} will become an editor and this seat will be reserved for them.`,
+        action: "Grant access",
+        destructive: false,
+      };
+    }
+    if (confirmation.kind === "reject") {
+      return {
+        title: "Decline this access request?",
+        description: `${confirmation.request.name || confirmation.request.email} won’t be able to access this document. They can contact you if they need another review.`,
+        action: "Decline request",
+        destructive: true,
+      };
+    }
+    if (confirmation.kind === "revoke") {
+      return {
+        title: "Revoke this invitation?",
+        description: `The pending invitation sent to ${confirmation.invitation.email} will be removed.`,
+        action: "Revoke invitation",
+        destructive: true,
+      };
+    }
+    return {
+      title: "Remove this collaborator?",
+      description: `${confirmation.member.name || confirmation.member.email} will lose access to this document and any active collaboration session.`,
+      action: "Remove collaborator",
+      destructive: true,
+    };
+  })();
 
   return (
     <aside
@@ -94,213 +234,263 @@ export function EditorSidebar({
         className,
       )}
     >
-      {/* Sidebar Header */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Users className="size-4" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-foreground">
-            Document Hub
-          </span>
-          <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {users.length} online
-          </span>
-        </div>
-
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground hover:text-foreground"
-            onClick={onClose}
-            title="Close sidebar"
-            aria-label="Close sidebar"
-          >
-            <PanelRightClose className="size-4" />
-          </Button>
-        )}
-      </div>
-
       {/* Tabs navigation */}
-      <Tabs defaultValue="people" className="flex flex-1 flex-col overflow-hidden">
-        <div className="border-b border-border/50 px-4 pt-2 pb-2">
+      <Tabs
+        defaultValue="people"
+        className="flex flex-1 flex-col overflow-hidden"
+      >
+        <div className="border-b border-border/50 px-4 pt-2 pb-2 flex items-center gap-4">
           <TabsList className="grid w-full grid-cols-2 bg-muted/60">
             <TabsTrigger value="people" className="text-xs">
-              Collaborators ({users.length})
+              Collaborators ({members?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger value="settings" className="text-xs">
               Share & Info
             </TabsTrigger>
           </TabsList>
+
+          {onClose && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-foreground"
+              onClick={onClose}
+              title="Close sidebar"
+              aria-label="Close sidebar"
+            >
+              <PanelRightClose className="size-4" />
+            </Button>
+          )}
         </div>
 
         {/* Tab 1: People & Collaborators */}
-        <TabsContent value="people" className="flex-1 overflow-y-auto p-4 space-y-6 mt-0">
+        <TabsContent
+          value="people"
+          className="flex flex-1 flex-col overflow-y-auto p-4 mt-0"
+        >
           {/* Real-time Online Presence */}
-          <section className="space-y-3">
+          <section className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                Active Now ({users.length})
+              <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Collaborators ({members?.length ?? 0})
               </h2>
-              <span className="text-[11px] text-muted-foreground">Real-time sync</span>
             </div>
 
-            {users.length === 0 ? (
-              <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
-                <div className="size-2 animate-ping rounded-full bg-amber-500" />
-                Connecting to live presence…
+            {membersPending ? (
+              <div className="rounded-lg border border-dashed border-border/70 p-3 text-center text-xs text-muted-foreground">
+                Loading collaborators…
               </div>
+            ) : membersError && !members ? (
+              <div className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs">
+                <p className="text-muted-foreground">
+                  Collaborators could not be loaded.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={() => void refetchMembers()}
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : !members?.length ? (
+              <p className="rounded-lg border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
+                No collaborators have access to this document.
+              </p>
             ) : (
               <div className="space-y-1.5">
-                {users.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/60 p-2.5 transition-colors hover:bg-card"
-                  >
-                    <div className="relative">
-                      <UserAvatar name={u.name} color={u.color} className="size-8 text-xs shadow-sm ring-2 ring-background" />
-                      <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
-                    </div>
+                {members.map((member) => {
+                  const activeUser = onlineUsersById.get(member.userId);
+                  const displayName = member.name || member.email;
+                  const online = Boolean(activeUser);
+                  const avatarImage = member.image ?? activeUser?.avatar;
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-xs font-medium text-foreground">
-                          {u.name}
+                  return (
+                    <div
+                      key={member.userId}
+                      className="flex items-center gap-3 rounded-lg border border-border/40 bg-card/60 p-2.5 transition-colors hover:bg-card"
+                    >
+                      <div className="relative">
+                        <Avatar
+                          className={cn(
+                            "size-8 ring-2 ring-background",
+                            !online && "grayscale opacity-60",
+                          )}
+                        >
+                          {avatarImage && (
+                            <AvatarImage
+                              src={avatarImage}
+                              alt={displayName}
+                              referrerPolicy="no-referrer"
+                            />
+                          )}
+                          <AvatarFallback
+                            style={{
+                              backgroundColor: activeUser?.color ?? "#737373",
+                              color: "#fff",
+                            }}
+                            className="text-xs font-semibold"
+                          >
+                            {displayName.trim().charAt(0).toUpperCase() || "?"}
+                          </AvatarFallback>
+                          <AvatarBadge
+                            aria-label={online ? "Online" : "Offline"}
+                            title={online ? "Online" : "Offline"}
+                            className={cn(
+                              "border-2 border-background",
+                              online ? "bg-emerald-500" : "bg-muted-foreground",
+                            )}
+                          />
+                        </Avatar>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-xs font-medium text-foreground">
+                            {displayName}
+                          </span>
+                          {activeUser?.isYou && (
+                            <Badge
+                              variant="secondary"
+                              className="px-1.5 py-0 text-[10px] font-normal leading-none"
+                            >
+                              You
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {activeUser
+                            ? activeUser.connections > 1
+                              ? `${activeUser.connections} tabs active`
+                              : "Active now"
+                            : "Offline"}
                         </span>
-                        {u.isYou && (
-                          <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-normal leading-none">
-                            You
-                          </Badge>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1">
+                        <HoverCard>
+                          <HoverCardTrigger
+                            render={
+                              <button
+                                type="button"
+                                className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                aria-label={`${displayName}: ${member.role} permission details`}
+                              />
+                            }
+                          >
+                            <RoleBadge role={member.role} />
+                          </HoverCardTrigger>
+                          <HoverCardContent
+                            side="left"
+                            align="center"
+                            className="space-y-2"
+                          >
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {displayName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {member.email}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RoleBadge role={member.role} />
+                              <span className="text-xs text-muted-foreground">
+                                {permissionDescription(member.role)}
+                              </span>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                        {isOwner && member.role !== "owner" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setConfirmation({
+                                kind: "remove",
+                                member,
+                              })
+                            }
+                            title={`Remove ${displayName}`}
+                            aria-label={`Remove ${displayName} from this document`}
+                            disabled={removeMember.isPending}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
                         )}
                       </div>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {u.connections > 1 ? `${u.connections} tabs active` : "Active editor"}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
 
-          {/* Document Access Role */}
-          <section className="space-y-2.5 rounded-xl border border-border/50 bg-muted/20 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">Your permission</span>
-              <RoleBadge role={role} />
+          <section className="mt-auto space-y-3 rounded-xl bg-muted/30 p-3">
+            <div className="flex items-center gap-2">
+              <Settings2 className="size-3.5 text-muted-foreground" />
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Settings
+              </h3>
             </div>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {role === "owner"
-                ? "You own this document and have full control to edit and manage members."
-                : role === "editor"
-                  ? "You have full editing and collaboration rights in real time."
-                  : "You have view-only access to this document."}
-            </p>
-          </section>
-
-          {/* Members / Invites Management */}
-          <section className="space-y-3">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Invited Members
-            </h2>
-
-            {/* Invite input for owners */}
-            {isOwner && (
-              <form onSubmit={handleInvite} className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                {members.length}/{MAX_DOCUMENT_MEMBERS} members
-              </p>
-                <div className="flex gap-1.5">
-                  <Input
-                    type="email"
-                    placeholder="teammate@company.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="h-8 text-xs"
-                    disabled={addMember.isPending}
-                  />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "editor" | "viewer")}
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    disabled={addMember.isPending}
-                  >
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
-                </div>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-7 w-full text-xs font-medium"
-                  disabled={addMember.isPending || !inviteEmail.trim() || members.length >= MAX_DOCUMENT_MEMBERS}
-                >
-                  <UserPlus className="mr-1.5 size-3" />
-                  {addMember.isPending ? "Inviting…" : "Invite Member"}
-                </Button>
-              </form>
-            )}
-
-            {/* Members List */}
-            {membersPending ? (
-              <div className="text-center py-2 text-xs text-muted-foreground">Loading members…</div>
-            ) : members.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No external members invited yet. Share the link below to invite teammates.
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {members.map((member) => (
-                  <div
-                    key={member.userId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-border/40 p-2 text-xs"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{member.name || member.email}</p>
-                      <p className="truncate text-[10px] text-muted-foreground">{member.email}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {member.role}
-                      </Badge>
-                      {isOwner && member.role !== "owner" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-6 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeMember.mutate(member.userId)}
-                          title="Remove member"
-                          disabled={removeMember.isPending}
-                        >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="divide-y divide-border/50 overflow-hidden rounded-lg bg-card/70">
+              <label
+                htmlFor="collaborator-notification-sound"
+                className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
+              >
+                <span className="text-sm font-medium text-foreground">
+                  Notification sound
+                </span>
+                <Switch
+                  id="collaborator-notification-sound"
+                  checked={notificationPreferences.soundEnabled}
+                  onCheckedChange={setSoundEnabled}
+                  aria-label="Notification sound"
+                />
+              </label>
+              <label
+                htmlFor="collaborator-notification-popup"
+                className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
+              >
+                <span className="text-sm font-medium text-foreground">
+                  Notification pop-up
+                </span>
+                <Switch
+                  id="collaborator-notification-popup"
+                  checked={notificationPreferences.popupEnabled}
+                  onCheckedChange={setPopupEnabled}
+                  aria-label="Notification pop-up"
+                />
+              </label>
+            </div>
           </section>
         </TabsContent>
 
         {/* Tab 2: Share & Document Settings */}
-        <TabsContent value="settings" className="flex-1 overflow-y-auto p-4 space-y-6 mt-0">
+        <TabsContent
+          value="settings"
+          className="flex-1 overflow-y-auto p-4 space-y-6 mt-0"
+        >
           {/* Quick Share Link */}
           <section className="space-y-3 rounded-xl border border-border/50 bg-card p-4 shadow-sm">
             <div className="flex items-center gap-2">
               <Share2 className="size-4 text-primary" />
-              <h3 className="text-xs font-semibold text-foreground">Link Sharing</h3>
+              <h3 className="text-xs font-semibold text-foreground">
+                Link Sharing
+              </h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Anyone with this document link and access to the workspace can collaborate with you.
+              A link alone doesn’t grant access. Invite collaborators or review
+              their requests below.
             </p>
             <div className="flex items-center gap-2">
               <Input
                 readOnly
-                value={typeof window !== "undefined" ? window.location.href : ""}
+                value={
+                  typeof window !== "undefined" ? window.location.href : ""
+                }
                 className="h-8 font-mono text-[11px] bg-muted/30"
               />
               <Button
@@ -324,10 +514,239 @@ export function EditorSidebar({
             </div>
           </section>
 
+          {isOwner && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex gap-2 items-center">
+                  <CircleFadingPlus size={16} />
+                  Pending access
+                </h3>
+                <Badge variant="outline" className="text-[11px]">
+                  {reservedIds.size}/{MAX_DOCUMENT_MEMBERS}
+                </Badge>
+              </div>
+
+              {sharingPending ? (
+                <p className="text-xs text-muted-foreground">
+                  Loading pending access…
+                </p>
+              ) : sharingError && !sharing ? (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
+                >
+                  <p className="font-medium text-foreground">
+                    Pending access couldn’t be loaded.
+                  </p>
+                  <p>{sharingErrorDescription}</p>
+                  {sharingLoadError instanceof ApiError &&
+                    sharingLoadError.code && (
+                      <p className="font-mono text-[10px] opacity-80">
+                        Error code: {sharingLoadError.code}
+                      </p>
+                    )}
+                  <p>
+                    No invitation or request was changed. Retry to load the
+                    latest information.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={retrySharing}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : !sharing ? (
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>Pending access is temporarily unavailable.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={retrySharing}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {sharingError && (
+                    <div
+                      role="alert"
+                      className="flex items-start justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">
+                          Refresh failed; showing the last loaded information.
+                        </p>
+                        <p className="text-muted-foreground">
+                          {sharingErrorDescription}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 shrink-0"
+                        onClick={retrySharing}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  {!sharing.requests.length && !sharing.invitations.length ? (
+                    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
+                      <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <Inbox className="size-4" aria-hidden="true" />
+                      </span>
+                      <p className="text-xs font-medium text-foreground">
+                        No requests received or invitations sent
+                      </p>
+                      <p className="max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+                        New invitations you send and access requests awaiting
+                        your review will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-foreground">
+                          Join requests ({sharing?.requests.length ?? 0})
+                        </h4>
+                        {!sharing?.requests.length ? (
+                          <p className="text-xs text-muted-foreground">
+                            No one is waiting for access.
+                          </p>
+                        ) : (
+                          sharing.requests.map((request) => (
+                            <div
+                              key={request.id}
+                              className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
+                            >
+                              <Avatar className="size-8 shrink-0">
+                                {request.image && (
+                                  <AvatarImage
+                                    src={request.image}
+                                    alt={request.name || request.email}
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <AvatarFallback className="text-xs">
+                                  {(request.name || request.email)
+                                    .trim()
+                                    .charAt(0)
+                                    .toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">
+                                  {request.name || request.email}
+                                </p>
+                                <p className="truncate text-[10px] text-muted-foreground">
+                                  {request.email}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                                aria-label={`Grant access to ${request.name || request.email}`}
+                                title="Grant access"
+                                disabled={confirmationPending}
+                                onClick={() =>
+                                  setConfirmation({ kind: "approve", request })
+                                }
+                              >
+                                <Check className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                className="text-destructive"
+                                aria-label={`Decline request from ${request.name || request.email}`}
+                                title="Decline request"
+                                disabled={confirmationPending}
+                                onClick={() =>
+                                  setConfirmation({ kind: "reject", request })
+                                }
+                              >
+                                <X className="size-3.5" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-foreground">
+                          Invitations not yet accepted (
+                          {sharing?.invitations.length ?? 0})
+                        </h4>
+                        {!sharing?.invitations.length ? (
+                          <p className="text-xs text-muted-foreground">
+                            No pending invitations.
+                          </p>
+                        ) : (
+                          sharing.invitations.map((invitation) => (
+                            <div
+                              key={invitation.id}
+                              className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
+                            >
+                              <Avatar className="size-8 shrink-0">
+                                {invitation.image && (
+                                  <AvatarImage
+                                    src={invitation.image}
+                                    alt={invitation.name || invitation.email}
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <AvatarFallback className="text-xs">
+                                  {(invitation.name || invitation.email)
+                                    .trim()
+                                    .charAt(0)
+                                    .toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">
+                                  {invitation.name || invitation.email}
+                                </p>
+                                <p className="truncate text-[10px] text-muted-foreground">
+                                  {invitation.email} · {invitation.role}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                className="text-muted-foreground hover:text-destructive"
+                                aria-label={`Revoke invitation for ${invitation.email}`}
+                                title="Revoke invitation"
+                                disabled={confirmationPending}
+                                onClick={() =>
+                                  setConfirmation({
+                                    kind: "revoke",
+                                    invitation,
+                                  })
+                                }
+                              >
+                                <RotateCcw className="size-3.5" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
           {/* Document Metadata */}
           <section className="space-y-3">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Info className="size-3.5" />
+              <Info size={16} />
               Document Details
             </h3>
             <div className="rounded-xl border border-border/50 bg-card/60 p-3.5 space-y-2.5 text-xs">
@@ -335,17 +754,23 @@ export function EditorSidebar({
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <FileText className="size-3.5" /> Title
                 </span>
-                <span className="font-medium text-foreground truncate max-w-[160px]">{doc.title}</span>
+                <span className="font-medium text-foreground truncate max-w-[160px]">
+                  {doc.title}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Clock className="size-3.5" /> Last Modified
                 </span>
-                <span className="text-foreground">{timeAgo(doc.updatedAt)}</span>
+                <span className="text-foreground">
+                  {timeAgo(doc.updatedAt)}
+                </span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
                 <span className="text-muted-foreground">Document ID</span>
-                <span className="font-mono text-muted-foreground text-[10px]">{doc.id.slice(0, 8)}…</span>
+                <span className="font-mono text-muted-foreground text-[10px]">
+                  {doc.id.slice(0, 8)}…
+                </span>
               </div>
             </div>
           </section>
@@ -354,10 +779,13 @@ export function EditorSidebar({
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Link2 className="size-3.5" />
+                <Link2 size={16} />
                 Coming Soon
               </h3>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 font-normal"
+              >
                 Roadmap
               </Badge>
             </div>
@@ -373,12 +801,19 @@ export function EditorSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-foreground leading-none">{title}</p>
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                      <p className="text-xs font-medium text-foreground leading-none">
+                        {title}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] px-1 py-0 text-muted-foreground"
+                      >
                         Soon
                       </Badge>
                     </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{hint}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                      {hint}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -386,6 +821,42 @@ export function EditorSidebar({
           </section>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={Boolean(confirmation)}
+        onOpenChange={(open) => {
+          if (!open && !confirmationPending) setConfirmation(null);
+        }}
+      >
+        {confirmationCopy && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{confirmationCopy.title}</DialogTitle>
+              <DialogDescription>
+                {confirmationCopy.description}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmation(null)}
+                disabled={confirmationPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={
+                  confirmationCopy.destructive ? "destructive" : "default"
+                }
+                onClick={confirmAction}
+                disabled={confirmationPending}
+              >
+                {confirmationPending ? "Working…" : confirmationCopy.action}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </aside>
   );
 }

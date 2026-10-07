@@ -10,7 +10,7 @@ export function FullPageSpinner() {
   );
 }
 
-/** Only logged-in users get through; others go to /login. */
+// only logged in can get in
 export function RequireAuth() {
   const { data: session, isPending } = authClient.useSession();
   const location = useLocation();
@@ -22,11 +22,17 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-/** Login/signup pages: logged-in users get sent to the dashboard. */
+// logged in can pass to dash
 export function PublicOnly() {
   const { data: session, isPending } = authClient.useSession();
+  const location = useLocation();
 
   if (isPending) return <FullPageSpinner />;
-  if (session) return <Navigate to="/dashboard/overview" replace />;
+  const reauthenticating =
+    location.pathname === "/login" &&
+    new URLSearchParams(location.search).get("reauth") === "1";
+  if (session && !reauthenticating) {
+    return <Navigate to="/dashboard/overview" replace />;
+  }
   return <Outlet />;
 }
