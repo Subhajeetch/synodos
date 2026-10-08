@@ -34,10 +34,17 @@ import {
 } from "@/hooks/use-documents";
 import { useOfflinePersistence } from "@/hooks/use-offline-persistence";
 import { usePresence } from "@/hooks/use-presence";
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
 import { authClient } from "@/lib/auth-client";
 import { userColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { ConnectionStatus } from "./connection-status";
+import {
+  renderCollaborationCursor,
+  showActiveCollaborationCursors,
+} from "./collaboration-cursor";
+import "./collaboration-cursor.css";
+import "./editor-document.css";
 import { EditorSidebar } from "./editor-sidebar";
 import { EditorToolbar } from "./editor-toolbar";
 import { InviteMemberDialog } from "./invite-member-dialog";
@@ -70,6 +77,8 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   );
   const { data: sharing } = useDocumentSharing(doc.id, isOwner);
   const users = usePresence(userId);
+  const { preferences: collaborationPreferences } =
+    useNotificationPreferences();
   const previousOnlineUsers = useRef<Set<string>>(new Set());
   const previousMemberIds = useRef<Set<string>>(new Set());
   const previousRequestIds = useRef<Set<string>>(new Set());
@@ -78,6 +87,40 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   const initializedRequests = useRef(false);
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const awareness = provider.awareness;
+    if (!awareness) return;
+
+    const previousCursors = new Map<number, string>();
+    const onAwarenessUpdate = () => {
+      const states = awareness.getStates();
+
+      states.forEach((state, clientId) => {
+        if (clientId === awareness.clientID || !state.cursor) {
+          previousCursors.delete(clientId);
+          return;
+        }
+
+        const cursorState = JSON.stringify(state.cursor);
+        if (previousCursors.get(clientId) === cursorState) return;
+
+        previousCursors.set(clientId, cursorState);
+        if (typeof state.user?.id === "string") {
+          showActiveCollaborationCursors(state.user.id);
+        }
+      });
+
+      for (const clientId of previousCursors.keys()) {
+        if (!states.has(clientId)) previousCursors.delete(clientId);
+      }
+    };
+
+    awareness.on("update", onAwarenessUpdate);
+    return () => {
+      awareness.off("update", onAwarenessUpdate);
+    };
+  }, [provider]);
 
   useHocuspocusEvent("authenticationFailed", ({ reason }) => {
     console.warn("Collab authentication failed:", reason);
@@ -205,7 +248,11 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
         StarterKit.configure({ undoRedo: false }),
         Placeholder.configure({ placeholder: "Start writing…" }),
         Collaboration.configure({ document: provider.document }),
-        CollaborationCaret.configure({ provider, user }),
+        CollaborationCaret.configure({
+          provider,
+          user,
+          render: renderCollaborationCursor,
+        }),
       ],
       editorProps: {
         attributes: {
@@ -338,7 +385,13 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
 
       <div className="flex min-h-0 flex-1 overflow-hidden bg-muted/30 dark:bg-[#111113]">
         <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8">
-          <div className="mx-auto min-h-[calc(100dvh-12rem)] max-w-4xl rounded-xl bg-white px-8 py-12 text-neutral-950 shadow-sm ring-1 ring-neutral-200/50 sm:px-12 lg:px-16 transition-shadow hover:shadow-md">
+          <div
+            className={cn(
+              "editor-document mx-auto min-h-[calc(100dvh-12rem)] max-w-4xl rounded-xl bg-white px-8 py-12 text-neutral-950 shadow-sm ring-1 ring-neutral-200/50 sm:px-12 lg:px-16 transition-shadow hover:shadow-md",
+              collaborationPreferences.alwaysShowCursor &&
+                "always-show-collaboration-cursor",
+            )}
+          >
             <EditorContent editor={editor} />
           </div>
         </main>

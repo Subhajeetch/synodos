@@ -1,0 +1,136 @@
+/*
+ * Remote collaborator cursor
+ * A thin caret in the person's color, with an avatar + name pill attached to
+ * it. The whole cursor fades in on activity, then out when idle.
+ *
+ * The cursor remains active for three seconds after its last position update.
+ */
+
+/* ── Caret ─────────────────────────────────────────────── */
+.collaboration-carets__caret.collaboration-cursor {
+  --_color: var(--collaboration-cursor-color, #2563eb);
+  position: relative;
+  margin-inline: -1px;
+  border-left: 2px solid var(--_color);
+  border-right: 0;
+  border-radius: 1px;
+  pointer-events: none;
+  word-break: normal;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.collaboration-carets__caret.collaboration-cursor--active {
+  opacity: 1;
+}
+
+/* ── Pill ──────────────────────────────────────────────── */
+.collaboration-cursor__badge {
+  position: absolute;
+  bottom: calc(100% - 1px);
+  /* tucked 1px over the caret for a seamless join */
+  left: -2px;
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 24px;
+  max-width: 200px;
+  padding: 0 10px 0 3px;
+
+  /* one square corner: the pill reads as a flag planted on the caret */
+  border-radius: 12px 12px 12px 2px;
+  background: var(--_color);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.14),
+    0 1px 2px rgb(0 0 0 / 0.16),
+    0 6px 14px -6px color-mix(in srgb, var(--_color) 70%, transparent);
+
+  font: 600 11.5px/1 var(--font-sans, Inter, system-ui, sans-serif);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+  pointer-events: none;
+  user-select: none;
+
+  transform: translateY(3px) scale(0.97);
+  transition: transform 180ms ease-out;
+}
+
+.collaboration-cursor--active .collaboration-cursor__badge {
+  transform: translateY(0) scale(1);
+}
+
+.always-show-collaboration-cursor .collaboration-carets__caret.collaboration-cursor {
+  opacity: 1;
+}
+
+.always-show-collaboration-cursor .collaboration-cursor__badge {
+  transform: translateY(0) scale(1);
+}
+
+/* White text on dark/mid colors, near-black on light ones (yellow, mint...). */
+@supports (color: oklch(from red l c h)) {
+  .collaboration-cursor__badge {
+    color: oklch(from var(--_color) clamp(0.2, (0.68 - l) * 1000, 1) 0 0);
+  }
+}
+
+/* ── Avatar ────────────────────────────────────────────── */
+.collaboration-cursor__avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* hairline edge so photos don't melt into the pill */
+.collaboration-cursor__avatar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.collaboration-cursor__fallback {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.collaboration-cursor__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Name ──────────────────────────────────────────────── */
+.collaboration-cursor__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collaboration-carets__caret.collaboration-cursor,
+  .collaboration-cursor__badge {
+    transition-duration: 0.01ms;
+  }
+}
+
+@media print {
+  .collaboration-carets__caret.collaboration-cursor {
+    display: none;
+  }
+}

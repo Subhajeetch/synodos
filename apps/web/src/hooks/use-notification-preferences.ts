@@ -6,11 +6,13 @@ const CHANGE_EVENT = "synodos:notification-preferences-change";
 export type NotificationPreferences = {
   soundEnabled: boolean;
   popupEnabled: boolean;
+  alwaysShowCursor: boolean;
 };
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   soundEnabled: true,
   popupEnabled: true,
+  alwaysShowCursor: false,
 };
 
 function readPreferences(): NotificationPreferences {
@@ -33,6 +35,10 @@ function readPreferences(): NotificationPreferences {
         typeof preferences.popupEnabled === "boolean"
           ? preferences.popupEnabled
           : DEFAULT_PREFERENCES.popupEnabled,
+      alwaysShowCursor:
+        typeof preferences.alwaysShowCursor === "boolean"
+          ? preferences.alwaysShowCursor
+          : DEFAULT_PREFERENCES.alwaysShowCursor,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -94,5 +100,7 @@ export function useNotificationPreferences() {
     preferences,
     setSoundEnabled: (value: boolean) => setPreference("soundEnabled", value),
     setPopupEnabled: (value: boolean) => setPreference("popupEnabled", value),
+    setAlwaysShowCursor: (value: boolean) =>
+      setPreference("alwaysShowCursor", value),
   };
 }

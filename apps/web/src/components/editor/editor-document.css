@@ -1,0 +1,52 @@
+.editor-document .ProseMirror:focus {
+  outline: none;
+}
+
+.editor-document .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.editor-document .ProseMirror h1,
+.editor-document .ProseMirror h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.editor-document .ProseMirror h1 {
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+
+.editor-document .ProseMirror h2 {
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+.editor-document .ProseMirror p {
+  margin: 0;
+}
+
+.editor-document .ProseMirror code {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+.editor-document .ProseMirror-yjs-selection,
+.editor-document .collaboration-carets__selection {
+  background-color: currentColor;
+  opacity: 0.25;
+  pointer-events: none;
+}

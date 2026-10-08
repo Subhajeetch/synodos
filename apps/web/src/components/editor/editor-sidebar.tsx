@@ -125,6 +125,7 @@ export function EditorSidebar({
     preferences: notificationPreferences,
     setSoundEnabled,
     setPopupEnabled,
+    setAlwaysShowCursor,
   } = useNotificationPreferences();
 
   const {
@@ -271,7 +272,7 @@ export function EditorSidebar({
           {/* Real-time Online Presence */}
           <section className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ">
                 Collaborators ({members?.length ?? 0})
               </h2>
             </div>
@@ -440,8 +441,13 @@ export function EditorSidebar({
                 htmlFor="collaborator-notification-sound"
                 className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
               >
-                <span className="text-sm font-medium text-foreground">
-                  Notification sound
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">
+                    Notification sound
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Play a sound when collaborators join or leave.
+                  </span>
                 </span>
                 <Switch
                   id="collaborator-notification-sound"
@@ -454,14 +460,39 @@ export function EditorSidebar({
                 htmlFor="collaborator-notification-popup"
                 className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
               >
-                <span className="text-sm font-medium text-foreground">
-                  Notification pop-up
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">
+                    Notification pop-up
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Show a pop-up for collaborator activity.
+                  </span>
                 </span>
                 <Switch
                   id="collaborator-notification-popup"
                   checked={notificationPreferences.popupEnabled}
                   onCheckedChange={setPopupEnabled}
                   aria-label="Notification pop-up"
+                />
+              </label>
+              <label
+                htmlFor="collaborator-always-show-cursor"
+                className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">
+                    Always show cursor
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Keep collaborator cursor labels visible while they are in
+                    the document.
+                  </span>
+                </span>
+                <Switch
+                  id="collaborator-always-show-cursor"
+                  checked={notificationPreferences.alwaysShowCursor}
+                  onCheckedChange={setAlwaysShowCursor}
+                  aria-label="Always show cursor"
                 />
               </label>
             </div>
