@@ -1,10 +1,16 @@
 import { useEffect, useRef } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  HocuspocusProviderWebsocket,
+  WebSocketStatus,
+} from "@hocuspocus/provider";
 import {
   HocuspocusProviderWebsocketComponent,
   HocuspocusRoom,
 } from "@hocuspocus/provider-react";
+import type { ReactNode } from "react";
 import {
   ArrowLeft,
   Check,
@@ -26,12 +32,74 @@ import { ApiError } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { COLLAB_URL, getCollabToken } from "@/lib/collab";
 
+function PersistentCollaborationConnection({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const websocketRef = useRef<HocuspocusProviderWebsocket | null>(null);
+  const destroyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  if (websocketRef.current === null) {
+    websocketRef.current = new HocuspocusProviderWebsocket({
+      url: COLLAB_URL,
+      messageReconnectTimeout: 150_000,
+      maxAttempts: 0,
+    });
+  }
+
+  // eslint-disable-next-line react-hooks/refs -- Keep one lazy socket instance for this component's lifetime.
+  const provider = websocketRef.current;
+
+  useEffect(() => {
+    if (destroyTimeoutRef.current) {
+      clearTimeout(destroyTimeoutRef.current);
+      destroyTimeoutRef.current = null;
+    }
+
+    function reconnectIfNeeded() {
+      if (
+        document.visibilityState === "visible" &&
+        provider.shouldConnect &&
+        provider.status === WebSocketStatus.Disconnected
+      ) {
+        void provider.connect();
+      }
+    }
+
+    document.addEventListener("visibilitychange", reconnectIfNeeded);
+    window.addEventListener("focus", reconnectIfNeeded);
+    window.addEventListener("online", reconnectIfNeeded);
+
+    return () => {
+      document.removeEventListener("visibilitychange", reconnectIfNeeded);
+      window.removeEventListener("focus", reconnectIfNeeded);
+      window.removeEventListener("online", reconnectIfNeeded);
+      // Let StrictMode's immediate effect replay reuse the same socket.
+      destroyTimeoutRef.current = setTimeout(() => {
+        provider.destroy();
+        websocketRef.current = null;
+      }, 0);
+    };
+  }, [provider]);
+
+  return (
+    <HocuspocusProviderWebsocketComponent
+      websocketProvider={provider}
+    >
+      {children}
+    </HocuspocusProviderWebsocketComponent>
+  );
+}
+
 export function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: doc, isPending, error, refetch } = useDocument(id);
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const documentMissing = error instanceof ApiError && error.status === 404;
+  const previouslyHadAccess = useRef(false);
   const access = useDocumentAccessStatus(id, documentMissing);
   const previousAccessStatus = useRef(access.data?.status);
   const requestAccess = useRequestDocumentAccess(id ?? "", {
@@ -40,6 +108,19 @@ export function EditorPage() {
     image: session?.user.image ?? null,
   });
   const acceptInvitation = useAcceptDocumentInvitation(id ?? "");
+
+  useEffect(() => {
+    if (doc) previouslyHadAccess.current = true;
+  }, [doc]);
+
+  useEffect(() => {
+    if (!documentMissing || !previouslyHadAccess.current) return;
+    toast.warning("You have been removed", {
+      id: `document-access-removed-${id}`,
+      description: "You have been removed from this document room.",
+    });
+    navigate("/dashboard/overview", { replace: true });
+  }, [documentMissing, id, navigate]);
 
   useEffect(() => {
     if (
@@ -185,11 +266,11 @@ export function EditorPage() {
   }
 
   return (
-    <HocuspocusProviderWebsocketComponent url={COLLAB_URL}>
+    <PersistentCollaborationConnection>
       <HocuspocusRoom name={doc.id} token={getCollabToken}>
         <EditorWorkspace doc={doc} />
       </HocuspocusRoom>
-    </HocuspocusProviderWebsocketComponent>
+    </PersistentCollaborationConnection>
   );
 }
 

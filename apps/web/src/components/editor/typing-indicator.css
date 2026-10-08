@@ -1,0 +1,43 @@
+.typing-indicator {
+  width: 1.75rem;
+  height: 0.875rem;
+  flex: none;
+  color: currentColor;
+}
+
+.typing-indicator__dot {
+  fill: currentColor;
+  opacity: 0.45;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: typing-indicator-hop 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.typing-indicator__dot--two {
+  animation-delay: 0.15s;
+}
+
+.typing-indicator__dot--three {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-indicator-hop {
+  0%,
+  40%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.45;
+  }
+
+  20% {
+    transform: translateY(-10px) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-indicator__dot {
+    animation: none;
+    opacity: 0.75;
+  }
+}

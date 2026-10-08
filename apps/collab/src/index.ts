@@ -30,6 +30,7 @@ const JWKS = createRemoteJWKSet(new URL("/api/auth/jwks", env.BETTER_AUTH_URL));
 const server = new Server({
   name: `synodos-collab-${env.COLLAB_PORT}`,
   port: env.COLLAB_PORT,
+  timeout: 120_000, // Allow background tabs more time before expiring a quiet socket.
   debounce: 2_000, // store 2s after the last change...
   maxDebounce: 10_000, // ...but never wait longer than 10s during continuous typing
 

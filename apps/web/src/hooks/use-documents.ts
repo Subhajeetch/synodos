@@ -112,6 +112,7 @@ export function useDocument(id: string | undefined) {
     queryKey: documentKeys.detail(id ?? ""),
     queryFn: () => api<DocumentSummary>(`/api/documents/${id}`),
     enabled: Boolean(id),
+    refetchInterval: (query) => (query.state.data ? 5_000 : false),
     retry: (count, error) =>
       !(error instanceof ApiError && error.status === 404) && count < 1,
   });
@@ -282,10 +283,10 @@ export function useRequestDocumentAccess(
 export function useApproveJoinRequest(docId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (requestId: string) =>
+    mutationFn: (input: { requestId: string; role: "editor" | "viewer" }) =>
       api<DocumentMember>(
-        `/api/documents/${docId}/join-requests/${requestId}/approve`,
-        { method: "POST" },
+        `/api/documents/${docId}/join-requests/${input.requestId}/approve`,
+        { method: "POST", json: { role: input.role } },
       ),
     onSuccess: () => {
       invalidateSharing(queryClient, docId);
@@ -348,6 +349,22 @@ export function useRemoveDocumentMember(docId: string) {
         "Access to this document was removed.",
         "warning",
       );
+      invalidateSharing(queryClient, docId);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+}
+
+export function useUpdateDocumentMemberRole(docId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { userId: string; role: "editor" | "viewer" }) =>
+      api<{ userId: string; role: "editor" | "viewer" }>(
+        `/api/documents/${docId}/members/${input.userId}`,
+        { method: "PATCH", json: { role: input.role } },
+      ),
+    onSuccess: ({ role }) => {
+      toast.success(`Collaborator role changed to ${role}`);
       invalidateSharing(queryClient, docId);
     },
     onError: (error) => toast.error(errorMessage(error)),

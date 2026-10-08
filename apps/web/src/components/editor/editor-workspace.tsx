@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ArrowLeft, PanelRight, UserPlus, Users } from "lucide-react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import type { Transaction } from "@tiptap/pm/state";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import Collaboration from "@tiptap/extension-collaboration";
+import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import {
   useHocuspocusEvent,
@@ -14,6 +15,9 @@ import {
   canEdit,
   canManageMembers,
   MAX_DOCUMENT_MEMBERS,
+  memberRemovedMessageSchema,
+  memberRoleChangedMessageSchema,
+  type DocumentMember,
   type DocumentSummary,
 } from "@synodos/shared";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -38,6 +42,7 @@ import { useNotificationPreferences } from "@/hooks/use-notification-preferences
 import { authClient } from "@/lib/auth-client";
 import { userColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { ConnectionStatus } from "./connection-status";
 import {
   renderCollaborationCursor,
@@ -56,6 +61,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 /** Must be rendered inside <HocuspocusRoom>. */
 export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
+  const navigate = useNavigate();
   const provider = useHocuspocusProvider();
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
@@ -85,6 +91,8 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   const initializedPresence = useRef(false);
   const initializedMembers = useRef(false);
   const initializedRequests = useRef(false);
+  const handledLostAccess = useRef(false);
+  const removedUserIds = useRef(new Set<string>());
 
   const queryClient = useQueryClient();
 
@@ -134,6 +142,59 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
       queryKey: documentKeys.detail(doc.id),
     });
   });
+  useHocuspocusEvent("stateless", ({ payload }) => {
+    let message: unknown;
+    try {
+      message = JSON.parse(payload);
+    } catch {
+      return;
+    }
+    const parsed = memberRemovedMessageSchema.safeParse(message);
+    if (parsed.success) {
+      const removedUserId = parsed.data.userId;
+      if (removedUserId !== userId) {
+        removedUserIds.current.add(removedUserId);
+        return;
+      }
+
+      handledLostAccess.current = true;
+      toast.warning("You have been removed", {
+        id: `document-access-removed-${doc.id}`,
+        description: "You have been removed from this document room.",
+      });
+      navigate("/dashboard/overview", { replace: true });
+      return;
+    }
+
+    const roleChange = memberRoleChangedMessageSchema.safeParse(message);
+    if (!roleChange.success || roleChange.data.userId !== userId) return;
+
+    const roleLabel = roleChange.data.role === "editor" ? "Editor" : "Viewer";
+    queryClient.setQueryData<DocumentSummary>(
+      documentKeys.detail(doc.id),
+      (current) =>
+        current ? { ...current, role: roleChange.data.role } : current,
+    );
+    queryClient.setQueryData<DocumentSummary[]>(
+      documentKeys.list(),
+      (current) =>
+        current?.map((document) =>
+          document.id === doc.id
+            ? { ...document, role: roleChange.data.role }
+            : document,
+        ),
+    );
+    queryClient.setQueryData<DocumentMember[]>(
+      documentKeys.members(doc.id),
+      (current) =>
+        current?.map((member) =>
+          member.userId === userId
+            ? { ...member, role: roleChange.data.role }
+            : member,
+        ),
+    );
+    toast.success(`Your role has changed to ${roleLabel}`);
+  });
 
   const lostAccess = syncError === "Forbidden";
   const editable = canEdit(doc.role) && !lostAccess;
@@ -145,6 +206,7 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   const memberLimitReached = reservedCollaborators >= MAX_DOCUMENT_MEMBERS;
 
   useEffect(() => {
+    if (handledLostAccess.current) return;
     if (membersPending || !members) return;
     const onlineIds = new Set(
       users
@@ -162,12 +224,14 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
     }
 
     for (const userId of onlineIds) {
+      removedUserIds.current.delete(userId);
       if (previousOnlineUsers.current.has(userId)) continue;
       const member = members.find((item) => item.userId === userId);
       if (member) notifyPresenceChange(member, true);
     }
     for (const userId of previousOnlineUsers.current) {
       if (onlineIds.has(userId)) continue;
+      if (removedUserIds.current.has(userId)) continue;
       const member = members.find((item) => item.userId === userId);
       if (member) notifyPresenceChange(member, false);
     }
@@ -227,6 +291,16 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   }, [lostAccess, clear]);
 
   useEffect(() => {
+    if (!lostAccess || handledLostAccess.current) return;
+    handledLostAccess.current = true;
+    toast.warning("You have been removed", {
+      id: `document-access-removed-${doc.id}`,
+      description: "You have been removed from this document room.",
+    });
+    navigate("/dashboard/overview", { replace: true });
+  }, [doc.id, lostAccess, navigate]);
+
+  useEffect(() => {
     document.title = `${doc.title} · Synodos`;
     return () => {
       document.title = "Synodos";
@@ -269,6 +343,35 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editor, editable]);
+
+  useEffect(() => {
+    if (!editor || !provider.awareness) return;
+
+    const awareness = provider.awareness;
+    let typingTimeout: number | undefined;
+
+    function setTyping(isTyping: boolean) {
+      const localUser = awareness.getLocalState()?.user;
+      if (!localUser || typeof localUser !== "object") return;
+      if (Boolean(localUser.isTyping) === isTyping) return;
+
+      awareness.setLocalStateField("user", { ...localUser, isTyping });
+    }
+
+    function handleEditorUpdate({ transaction }: { transaction: Transaction }) {
+      if (!transaction.docChanged || isChangeOrigin(transaction)) return;
+      setTyping(true);
+      window.clearTimeout(typingTimeout);
+      typingTimeout = window.setTimeout(() => setTyping(false), 1500);
+    }
+
+    editor.on("update", handleEditorUpdate);
+    return () => {
+      editor.off("update", handleEditorUpdate);
+      window.clearTimeout(typingTimeout);
+      setTyping(false);
+    };
+  }, [editor, provider]);
 
   if (!editor) return null;
 

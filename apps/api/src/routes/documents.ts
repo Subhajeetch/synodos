@@ -694,6 +694,9 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       const { requestId } = z
         .object({ requestId: z.uuid() })
         .parse(request.params);
+      const { role: memberRole } = z
+        .object({ role: z.enum(["editor", "viewer"]) })
+        .parse(request.body);
       const role = await getDocumentRole(db, request.user.id, id);
       if (!role)
         return reply
@@ -740,7 +743,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         await tx.insert(documentMembers).values({
           documentId: id,
           userId: member.userId,
-          role: "editor",
+          role: memberRole,
         });
         await tx
           .delete(documentJoinRequests)
@@ -762,7 +765,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       });
       return reply
         .code(201)
-        .send({ ...result.member, role: "editor" as const });
+        .send({ ...result.member, role: memberRole });
     },
   );
 
@@ -935,7 +938,16 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     }
 
     // Publish event so any active socket or listening client updates immediately
-    await publishAccessChanged({ documentId: id, userId: target.id });
+    await publishAccessChanged(
+      result.roleChanged
+        ? {
+            documentId: id,
+            userId: target.id,
+            reason: "role-changed",
+            role: body.role,
+          }
+        : { documentId: id, userId: target.id },
+    );
 
     return reply.code(201).send({
       userId: target.id,
@@ -954,17 +966,32 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       .parse(request.body);
 
     const callerRole = await getDocumentRole(db, request.user.id, id);
-    if (!callerRole) return reply.code(404).send({ error: "Not found" });
-    if (!canManageMembers(callerRole))
-      return reply.code(403).send({ error: "Forbidden" });
-
-    const targetRole = await getDocumentRole(db, userId, id);
-    if (!targetRole) return reply.code(404).send({ error: "Member not found" });
-    if (targetRole === "owner") {
-      return reply.code(400).send({ error: "Cannot change the owner's role" });
+    if (!callerRole) {
+      return reply
+        .code(404)
+        .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
+    }
+    if (!canManageMembers(callerRole)) {
+      return reply.code(403).send({
+        error: "Only the document owner can change member roles",
+        code: "OWNER_REQUIRED",
+      });
     }
 
-    await db
+    const targetRole = await getDocumentRole(db, userId, id);
+    if (!targetRole) {
+      return reply
+        .code(404)
+        .send({ error: "Document member not found", code: "MEMBER_NOT_FOUND" });
+    }
+    if (targetRole === "owner") {
+      return reply.code(409).send({
+        error: "The document owner's role cannot be changed",
+        code: "OWNER_ROLE_IMMUTABLE",
+      });
+    }
+
+    const [updated] = await db
       .update(documentMembers)
       .set({ role: body.role })
       .where(
@@ -972,9 +999,20 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           eq(documentMembers.documentId, id),
           eq(documentMembers.userId, userId),
         ),
-      );
+      )
+      .returning({ userId: documentMembers.userId });
+    if (!updated) {
+      return reply
+        .code(404)
+        .send({ error: "Document member not found", code: "MEMBER_NOT_FOUND" });
+    }
 
-    await publishAccessChanged({ documentId: id, userId });
+    await publishAccessChanged({
+      documentId: id,
+      userId,
+      reason: "role-changed",
+      role: body.role,
+    });
 
     return reply.send({ userId, role: body.role });
   });
@@ -1020,7 +1058,11 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .send({ error: "Document member not found", code: "MEMBER_NOT_FOUND" });
     }
 
-    await publishAccessChanged({ documentId: id, userId });
+    await publishAccessChanged({
+      documentId: id,
+      userId,
+      reason: "member-removed",
+    });
     return reply.code(204).send();
   });
 };

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import {
   Check,
+  ChevronRight,
   Clock,
   Copy,
   Download,
+  EllipsisVertical,
+  Eye,
   FileText,
   History,
   Info,
@@ -11,6 +14,7 @@ import {
   Link2,
   MessageSquare,
   PanelRightClose,
+  PencilLine,
   RotateCcw,
   Settings2,
   Share2,
@@ -54,12 +58,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   useApproveJoinRequest,
   useDocumentMembers,
   useDocumentSharing,
   useRejectJoinRequest,
   useRevokeDocumentInvitation,
   useRemoveDocumentMember,
+  useUpdateDocumentMemberRole,
 } from "@/hooks/use-documents";
 import type { PresenceUser } from "@/hooks/use-presence";
 import { ApiError } from "@/lib/api";
@@ -67,9 +77,14 @@ import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import { TypingIndicator } from "./typing-indicator";
 
 type ConfirmationAction =
-  | { kind: "approve"; request: DocumentJoinRequest }
+  | {
+      kind: "approve";
+      request: DocumentJoinRequest;
+      role: "editor" | "viewer";
+    }
   | { kind: "reject"; request: DocumentJoinRequest }
   | { kind: "revoke"; invitation: DocumentInvitation }
   | { kind: "remove"; member: DocumentMember };
@@ -120,6 +135,8 @@ export function EditorSidebar({
   const [confirmation, setConfirmation] = useState<ConfirmationAction | null>(
     null,
   );
+  const [openMemberMenu, setOpenMemberMenu] = useState<string | null>(null);
+  const [openRoleMenu, setOpenRoleMenu] = useState<string | null>(null);
   const isOwner = canManageMembers(role);
   const {
     preferences: notificationPreferences,
@@ -142,6 +159,7 @@ export function EditorSidebar({
     refetch: refetchSharing,
   } = useDocumentSharing(doc.id, canManageMembers(role));
   const removeMember = useRemoveDocumentMember(doc.id);
+  const updateMemberRole = useUpdateDocumentMemberRole(doc.id);
   const approveRequest = useApproveJoinRequest(doc.id);
   const rejectRequest = useRejectJoinRequest(doc.id);
   const revokeInvitation = useRevokeDocumentInvitation(doc.id);
@@ -184,7 +202,10 @@ export function EditorSidebar({
     if (!confirmation) return;
     const close = () => setConfirmation(null);
     if (confirmation.kind === "approve") {
-      approveRequest.mutate(confirmation.request.id, { onSuccess: close });
+      approveRequest.mutate(
+        { requestId: confirmation.request.id, role: confirmation.role },
+        { onSuccess: close },
+      );
     } else if (confirmation.kind === "reject") {
       rejectRequest.mutate(confirmation.request, { onSuccess: close });
     } else if (confirmation.kind === "revoke") {
@@ -197,10 +218,11 @@ export function EditorSidebar({
   const confirmationCopy = (() => {
     if (!confirmation) return null;
     if (confirmation.kind === "approve") {
+      const roleLabel = confirmation.role === "editor" ? "Editor" : "Viewer";
       return {
         title: "Grant document access?",
-        description: `${confirmation.request.name || confirmation.request.email} will become an editor and this seat will be reserved for them.`,
-        action: "Grant access",
+        description: `${confirmation.request.name || confirmation.request.email} will join as a ${confirmation.role} and this seat will be reserved for them.`,
+        action: `Grant as ${roleLabel}`,
         destructive: false,
       };
     }
@@ -227,6 +249,8 @@ export function EditorSidebar({
       destructive: true,
     };
   })();
+  const approvalConfirmation =
+    confirmation?.kind === "approve" ? confirmation : null;
 
   return (
     <aside
@@ -375,12 +399,16 @@ export function EditorSidebar({
                             render={
                               <button
                                 type="button"
-                                className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                aria-label={`${displayName}: ${member.role} permission details`}
+                                className={cn(
+                                  "flex items-center justify-center overflow-hidden rounded-full transition-[width] duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none",
+                                  activeUser?.isTyping ? "w-20" : "w-14",
+                                )}
+                                aria-label={`${displayName}: ${member.role} permission details${activeUser?.isTyping ? ", typing" : ""}`}
                               />
                             }
                           >
                             <RoleBadge role={member.role} />
+                            {activeUser?.isTyping && <TypingIndicator />}
                           </HoverCardTrigger>
                           <HoverCardContent
                             side="left"
@@ -404,22 +432,137 @@ export function EditorSidebar({
                           </HoverCardContent>
                         </HoverCard>
                         {isOwner && member.role !== "owner" && (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() =>
-                              setConfirmation({
-                                kind: "remove",
-                                member,
-                              })
-                            }
-                            title={`Remove ${displayName}`}
-                            aria-label={`Remove ${displayName} from this document`}
-                            disabled={removeMember.isPending}
+                          <Popover
+                            open={openMemberMenu === member.userId}
+                            onOpenChange={(open) => {
+                              setOpenMemberMenu(open ? member.userId : null);
+                              if (!open) setOpenRoleMenu(null);
+                            }}
                           >
-                            <Trash2 className="size-3" />
-                          </Button>
+                            <PopoverTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-muted-foreground"
+                                  title={`Actions for ${displayName}`}
+                                  aria-label={`Actions for ${displayName}`}
+                                  disabled={
+                                    confirmationPending ||
+                                    updateMemberRole.isPending
+                                  }
+                                />
+                              }
+                            >
+                              <EllipsisVertical
+                                className="size-3.5"
+                                aria-hidden="true"
+                              />
+                            </PopoverTrigger>
+                            <PopoverContent
+                              side="bottom"
+                              align="end"
+                              className="w-48 gap-1 p-1.5"
+                            >
+                              <Popover
+                                open={openRoleMenu === member.userId}
+                                onOpenChange={(open) =>
+                                  setOpenRoleMenu(open ? member.userId : null)
+                                }
+                              >
+                                <PopoverTrigger
+                                  render={
+                                    <Button
+                                      variant="ghost"
+                                      className="h-9 w-full justify-start rounded-lg px-2 text-xs"
+                                      disabled={
+                                        confirmationPending ||
+                                        updateMemberRole.isPending
+                                      }
+                                    />
+                                  }
+                                >
+                                  <PencilLine
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                  Change role
+                                  <ChevronRight
+                                    className="ml-auto size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  side="left"
+                                  align="start"
+                                  className="w-40 gap-1 p-1.5"
+                                >
+                                  {(["editor", "viewer"] as const).map(
+                                    (memberRole) => (
+                                      <Button
+                                        key={memberRole}
+                                        variant="ghost"
+                                        className="h-9 w-full justify-start rounded-lg px-2 text-xs capitalize"
+                                        disabled={
+                                          member.role === memberRole ||
+                                          updateMemberRole.isPending
+                                        }
+                                        onClick={() => {
+                                          setOpenRoleMenu(null);
+                                          setOpenMemberMenu(null);
+                                          updateMemberRole.mutate({
+                                            userId: member.userId,
+                                            role: memberRole,
+                                          });
+                                        }}
+                                      >
+                                        {memberRole === "editor" ? (
+                                          <PencilLine
+                                            className="size-3.5"
+                                            aria-hidden="true"
+                                          />
+                                        ) : (
+                                          <Eye
+                                            className="size-3.5"
+                                            aria-hidden="true"
+                                          />
+                                        )}
+                                        {memberRole}
+                                        {member.role === memberRole && (
+                                          <span
+                                            className="ml-auto size-2 rounded-full bg-emerald-500"
+                                            aria-label="Current role"
+                                            title="Current role"
+                                          />
+                                        )}
+                                      </Button>
+                                    ),
+                                  )}
+                                </PopoverContent>
+                              </Popover>
+                              <Button
+                                variant="ghost"
+                                className="h-9 w-full justify-start rounded-lg px-2 text-xs text-destructive hover:text-destructive"
+                                disabled={
+                                  confirmationPending ||
+                                  updateMemberRole.isPending
+                                }
+                                onClick={() => {
+                                  setOpenMemberMenu(null);
+                                  setConfirmation({
+                                    kind: "remove",
+                                    member,
+                                  });
+                                }}
+                              >
+                                <Trash2
+                                  className="size-3.5"
+                                  aria-hidden="true"
+                                />
+                                Remove collaborator
+                              </Button>
+                            </PopoverContent>
+                          </Popover>
                         )}
                       </div>
                     </div>
@@ -686,7 +829,11 @@ export function EditorSidebar({
                                 title="Grant access"
                                 disabled={confirmationPending}
                                 onClick={() =>
-                                  setConfirmation({ kind: "approve", request })
+                                  setConfirmation({
+                                    kind: "approve",
+                                    request,
+                                    role: "viewer",
+                                  })
                                 }
                               >
                                 <Check className="size-3.5" />
@@ -867,6 +1014,46 @@ export function EditorSidebar({
                 {confirmationCopy.description}
               </DialogDescription>
             </DialogHeader>
+            {approvalConfirmation && (
+              <div
+                role="group"
+                aria-label="Choose document access role"
+                className="grid grid-cols-2 gap-2"
+              >
+                <Button
+                  type="button"
+                  aria-pressed={approvalConfirmation.role === "editor"}
+                  onClick={() =>
+                    setConfirmation({ ...approvalConfirmation, role: "editor" })
+                  }
+                  className={
+                    approvalConfirmation.role === "editor"
+                      ? "bg-primary/20 hover:bg-primary/30"
+                      : "bg-muted hover:bg-muted/80"
+                  }
+                  disabled={confirmationPending}
+                >
+                  <PencilLine className="size-4" aria-hidden="true" />
+                  Editor
+                </Button>
+                <Button
+                  type="button"
+                  aria-pressed={approvalConfirmation.role === "viewer"}
+                  onClick={() =>
+                    setConfirmation({ ...approvalConfirmation, role: "viewer" })
+                  }
+                  className={
+                    approvalConfirmation.role === "viewer"
+                      ? "bg-primary/20 hover:bg-primary/30"
+                      : "bg-muted hover:bg-muted/80"
+                  }
+                  disabled={confirmationPending}
+                >
+                  <Eye className="size-4" aria-hidden="true" />
+                  Viewer
+                </Button>
+              </div>
+            )}
             <DialogFooter>
               <Button
                 variant="outline"
