@@ -268,7 +268,7 @@ export function EditorPage() {
   return (
     <PersistentCollaborationConnection>
       <HocuspocusRoom name={doc.id} token={getCollabToken}>
-        <EditorWorkspace doc={doc} />
+        <EditorWorkspace key={doc.id} doc={doc} />
       </HocuspocusRoom>
     </PersistentCollaborationConnection>
   );

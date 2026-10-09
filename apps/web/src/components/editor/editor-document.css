@@ -1,5 +1,216 @@
+.editor-paper-frame {
+  --paper-w: 794px;
+  --paper-h: 1123px;
+  --paper-padding: 24px;
+  width: var(--paper-w);
+  height: auto;
+  min-height: var(--paper-h);
+  touch-action: pan-x pan-y;
+  transform-origin: 0 0;
+}
+
+.editor-canvas {
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.editor-canvas__stage {
+  box-sizing: border-box;
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px var(--pan-slack-x, 0px) 160px;
+}
+
+.editor-canvas__sizer {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.editor-canvas--hand {
+  cursor: grab;
+}
+
+.editor-canvas--hand:active {
+  cursor: grabbing;
+}
+
+.editor-canvas--hand .ProseMirror {
+  pointer-events: none;
+  user-select: none;
+}
+
+.editor-document {
+  --heading: "Inter", "Segoe UI", sans-serif;
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --mono: "SFMono-Regular", "Consolas", monospace;
+  --text-h: #171717;
+  --text-body: #262626;
+  --code-bg: rgba(148, 163, 184, 0.12);
+  --doc-body-size: 11pt;
+  --doc-line-height: 1.5;
+  --doc-heading-1: 2.2em;
+  --doc-heading-2: 1.8em;
+  --doc-heading-3: 1.45em;
+  --doc-heading-4: 1.15em;
+  --doc-paragraph-spacing: 0.8em;
+  --page-inset: 25mm;
+  box-sizing: border-box;
+  width: 100%;
+  color: var(--text-body);
+  background: #fff;
+  font-family: var(--font-sans);
+}
+
+.editor-document .ProseMirror {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+  width: 100%;
+  font-size: var(--doc-body-size);
+  line-height: var(--doc-line-height);
+  color: var(--text-body);
+}
+
 .editor-document .ProseMirror:focus {
   outline: none;
+}
+
+.editor-document .ProseMirror > .editor-page-node {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-self: stretch;
+  position: static;
+  float: none;
+  width: 100%;
+  margin: 0;
+  transform: none;
+}
+
+.editor-document .editor-page-node > [aria-label$="controls"] {
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.dark .editor-document .editor-page-node > [aria-label$="controls"] {
+  border-color: rgb(229 229 229 / 0.8);
+  background: #fff;
+  color: #171717;
+  --foreground: 0 0% 9%;
+  --muted-foreground: 0 0% 45%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 0 0% 70%;
+}
+
+.dark .editor-document .editor-page-node > [aria-label$="controls"] input,
+.dark .editor-document .editor-page-node > [aria-label$="controls"] button {
+  color: #171717;
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  input:hover,
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  input:focus,
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  input:focus-visible {
+  border-color: #a3a3a3;
+  background: #fff;
+  color: #171717;
+  --ring: 0 0% 70%;
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button:hover:not(:disabled),
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button:focus-visible:not(:disabled) {
+  background: #f5f5f5;
+  color: #171717;
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button[data-variant="ghost"]:active:not(:disabled) {
+  background: #e5e5e5;
+  color: #171717;
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button:disabled {
+  color: #a3a3a3;
+}
+
+.editor-document .editor-page-surface {
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  width: var(--paper-w);
+  min-height: 1123px;
+  padding: var(--page-inset);
+  border: 1px solid rgb(229 229 229 / 0.8);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow:
+    0 2px 8px rgb(15 23 42 / 0.08),
+    0 24px 56px rgb(15 23 42 / 0.08);
+  break-after: page;
+}
+
+.editor-document .editor-page-surface::after {
+  position: absolute;
+  top: 1123px;
+  right: 0;
+  left: 0;
+  border-top: 1px dashed rgb(100 116 139 / 0.55);
+  content: "";
+  pointer-events: none;
+}
+
+.editor-page-node--overflow .editor-page-surface::before {
+  position: absolute;
+  z-index: 2;
+  top: 1128px;
+  right: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.9);
+  color: #64748b;
+  content: "Content extends past A4";
+  font: 10px/1.4 system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.editor-document .editor-page-content {
+  display: block;
+  width: 100%;
+  min-height: 100%;
 }
 
 .editor-document .ProseMirror p.is-editor-empty:first-child::before {
@@ -11,37 +222,140 @@
 }
 
 .editor-document .ProseMirror h1,
-.editor-document .ProseMirror h2 {
+.editor-document .ProseMirror h2,
+.editor-document .ProseMirror h3,
+.editor-document .ProseMirror h4 {
   font-family: var(--heading);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0 0 0.5em;
   color: var(--text-h);
-  margin: 0;
 }
 
-.editor-document .ProseMirror h1 {
-  font-size: inherit;
-  letter-spacing: inherit;
-}
+.editor-document .ProseMirror h1 { font-size: var(--doc-heading-1); }
+.editor-document .ProseMirror h2 { font-size: var(--doc-heading-2); }
+.editor-document .ProseMirror h3 { font-size: var(--doc-heading-3); }
+.editor-document .ProseMirror h4 { font-size: var(--doc-heading-4); }
 
-.editor-document .ProseMirror h2 {
-  font-size: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
+.editor-document .ProseMirror p,
+.editor-document .ProseMirror ul,
+.editor-document .ProseMirror ol,
+.editor-document .ProseMirror blockquote,
+.editor-document .ProseMirror pre,
+.editor-document .ProseMirror hr,
+.editor-document .ProseMirror table {
+  margin: 0 0 var(--doc-paragraph-spacing);
 }
 
 .editor-document .ProseMirror p {
-  margin: 0;
+  color: var(--text-body);
+}
+
+.editor-document .ProseMirror ul,
+.editor-document .ProseMirror ol {
+  padding-left: 1.5em;
+}
+
+.editor-document .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.editor-document .ProseMirror li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.editor-document .ProseMirror li[data-type="taskItem"] > label {
+  flex: none;
+  margin-top: 0.25em;
+}
+
+.editor-document .ProseMirror li[data-type="taskItem"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-document .ProseMirror blockquote {
+  border-left: 3px solid rgba(148, 163, 184, 0.8);
+  padding-left: 0.75em;
+  color: #3f3f46;
+}
+
+.editor-document .ProseMirror hr {
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.7);
+}
+
+.editor-document .ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .editor-document .ProseMirror code {
   font-family: var(--mono);
-  display: inline-flex;
+  display: inline;
   border-radius: 4px;
   color: var(--text-h);
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
+  font-size: 0.92em;
+  line-height: 1.4;
+  padding: 0.1em 0.35em;
   background: var(--code-bg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.editor-document .ProseMirror pre {
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+}
+
+.editor-document .ProseMirror pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+
+.editor-document .ProseMirror img,
+.editor-document .ProseMirror video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.editor-document .ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #d4d4d4;
+}
+
+.editor-document .ProseMirror th,
+.editor-document .ProseMirror td {
+  border: 1px solid #d4d4d4;
+  padding: 0.35rem 0.5rem;
+  vertical-align: top;
+}
+
+.editor-document .ProseMirror .selectedCell {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.editor-document .ProseMirror .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -1px;
+  width: 4px;
+  background: #3b82f6;
+  pointer-events: none;
+}
+
+.editor-document .ProseMirror.resize-cursor {
+  cursor: col-resize;
 }
 
 .editor-document .ProseMirror-yjs-selection,
@@ -49,4 +363,77 @@
   background-color: currentColor;
   opacity: 0.25;
   pointer-events: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body,
+  html {
+    background: #fff !important;
+  }
+
+  header,
+  .editor-toolbar,
+  .editor-sidebar,
+  footer,
+  .editor-page-node > [aria-label$="controls"],
+  .collaboration-cursor,
+  [data-collaboration-cursor],
+  .ProseMirror-yjs-selection,
+  .collaboration-carets__selection {
+    display: none !important;
+  }
+
+  .editor-canvas {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  .editor-canvas__stage {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  .editor-canvas__sizer {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .editor-paper-frame,
+  .editor-document {
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .editor-document .editor-page-surface {
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    break-after: page;
+  }
+
+  .editor-document .editor-page-node {
+    break-after: page;
+  }
+
+  .editor-document .editor-page-surface::before,
+  .editor-document .editor-page-surface::after {
+    display: none !important;
+  }
 }

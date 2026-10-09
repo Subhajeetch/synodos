@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useHocuspocusAwareness } from "@hocuspocus/provider-react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
+import { useHocuspocusProvider } from "@hocuspocus/provider-react";
 
 export type PresenceUser = {
   id: string;
@@ -22,12 +22,25 @@ type AwarenessUser = {
 };
 
 export function usePresence(currentUserId: string | undefined): PresenceUser[] {
-  const states = useHocuspocusAwareness();
-
-  return useMemo(() => {
+  const provider = useHocuspocusProvider();
+  const cache = useRef<{ currentUserId: string | undefined; users: PresenceUser[] }>({
+    currentUserId,
+    users: [],
+  });
+  const subscribe = useCallback(
+    (listener: () => void) => {
+      const awareness = provider.awareness;
+      if (!awareness) return () => undefined;
+      awareness.on("change", listener);
+      return () => awareness.off("change", listener);
+    },
+    [provider],
+  );
+  const getSnapshot = useCallback(() => {
+    const states = provider.awareness?.getStates().values() ?? [];
     const byId = new Map<string, PresenceUser>();
     for (const state of states) {
-      const user = state.user as AwarenessUser | undefined;
+      const user = (state as { user?: AwarenessUser }).user;
       if (!user?.id) continue;
 
       const existing = byId.get(user.id);
@@ -49,8 +62,30 @@ export function usePresence(currentUserId: string | undefined): PresenceUser[] {
         });
       }
     }
-    return [...byId.values()].sort(
+    const next = [...byId.values()].sort(
       (a, b) => Number(b.isYou) - Number(a.isYou) || a.name.localeCompare(b.name),
     );
-  }, [states, currentUserId]);
+    const previous = cache.current;
+    const unchanged =
+      previous.currentUserId === currentUserId &&
+      previous.users.length === next.length &&
+      previous.users.every((user, index) => {
+        const candidate = next[index];
+        return (
+          user.id === candidate?.id &&
+          user.name === candidate.name &&
+          user.email === candidate.email &&
+          user.avatar === candidate.avatar &&
+          user.color === candidate.color &&
+          user.isYou === candidate.isYou &&
+          user.isTyping === candidate.isTyping &&
+          user.connections === candidate.connections
+        );
+      });
+    if (unchanged) return previous.users;
+    cache.current = { currentUserId, users: next };
+    return next;
+  }, [currentUserId, provider]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
