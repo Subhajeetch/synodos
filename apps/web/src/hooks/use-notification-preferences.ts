@@ -1,19 +1,87 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+import { playSound as playSoundEngine } from "@/lib/audio/sound-engine";
 
 const STORAGE_KEY = "synodos:notification-preferences";
 const CHANGE_EVENT = "synodos:notification-preferences-change";
+
+export type NotificationCategoryPreferences = {
+  presence: boolean;
+  access: boolean;
+  system: boolean;
+};
 
 export type NotificationPreferences = {
   soundEnabled: boolean;
   popupEnabled: boolean;
   alwaysShowCursor: boolean;
+  soundVolume: number;
+  categories: NotificationCategoryPreferences;
 };
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   soundEnabled: true,
   popupEnabled: true,
   alwaysShowCursor: false,
+  soundVolume: 0.45,
+  categories: {
+    presence: true,
+    access: true,
+    system: true,
+  },
 };
+
+let cachedPreferences: NotificationPreferences | undefined;
+
+function clampVolume(value: number) {
+  if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.soundVolume;
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizePreferences(raw: unknown): NotificationPreferences {
+  const fallback = DEFAULT_PREFERENCES;
+  if (!raw || typeof raw !== "object") return fallback;
+
+  const value = raw as Partial<Record<string, unknown>>;
+  const categories = {
+    presence:
+      typeof value.categories === "object" &&
+      value.categories !== null &&
+      typeof (value.categories as Record<string, unknown>).presence === "boolean"
+        ? Boolean((value.categories as Record<string, unknown>).presence)
+        : fallback.categories.presence,
+    access:
+      typeof value.categories === "object" &&
+      value.categories !== null &&
+      typeof (value.categories as Record<string, unknown>).access === "boolean"
+        ? Boolean((value.categories as Record<string, unknown>).access)
+        : fallback.categories.access,
+    system:
+      typeof value.categories === "object" &&
+      value.categories !== null &&
+      typeof (value.categories as Record<string, unknown>).system === "boolean"
+        ? Boolean((value.categories as Record<string, unknown>).system)
+        : fallback.categories.system,
+  };
+
+  return {
+    soundEnabled:
+      typeof value.soundEnabled === "boolean"
+        ? value.soundEnabled
+        : fallback.soundEnabled,
+    popupEnabled:
+      typeof value.popupEnabled === "boolean"
+        ? value.popupEnabled
+        : fallback.popupEnabled,
+    alwaysShowCursor:
+      typeof value.alwaysShowCursor === "boolean"
+        ? value.alwaysShowCursor
+        : fallback.alwaysShowCursor,
+    soundVolume: clampVolume(
+      typeof value.soundVolume === "number" ? value.soundVolume : fallback.soundVolume,
+    ),
+    categories,
+  };
+}
 
 function readPreferences(): NotificationPreferences {
   if (typeof window === "undefined") return DEFAULT_PREFERENCES;
@@ -21,76 +89,66 @@ function readPreferences(): NotificationPreferences {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return DEFAULT_PREFERENCES;
+    const parsed = JSON.parse(stored) as unknown;
+    const migrated = normalizePreferences(parsed);
 
-    const value: unknown = JSON.parse(stored);
-    if (!value || typeof value !== "object") return DEFAULT_PREFERENCES;
-
-    const preferences = value as Partial<NotificationPreferences>;
-    return {
-      soundEnabled:
-        typeof preferences.soundEnabled === "boolean"
-          ? preferences.soundEnabled
-          : DEFAULT_PREFERENCES.soundEnabled,
-      popupEnabled:
-        typeof preferences.popupEnabled === "boolean"
-          ? preferences.popupEnabled
-          : DEFAULT_PREFERENCES.popupEnabled,
-      alwaysShowCursor:
-        typeof preferences.alwaysShowCursor === "boolean"
-          ? preferences.alwaysShowCursor
-          : DEFAULT_PREFERENCES.alwaysShowCursor,
-    };
+    if (stored !== JSON.stringify(migrated)) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    }
+    return migrated;
   } catch {
     return DEFAULT_PREFERENCES;
   }
 }
 
+function getPreferencesSnapshot() {
+  cachedPreferences ??= readPreferences();
+  return cachedPreferences;
+}
+
 function writePreferences(preferences: NotificationPreferences) {
+  cachedPreferences = normalizePreferences(preferences);
+  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    const serialized = JSON.stringify(cachedPreferences);
+    window.localStorage.setItem(STORAGE_KEY, serialized);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   } catch (error) {
     console.error("Could not save notification preferences:", error);
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   }
 }
 
 export function getNotificationPreferences() {
-  return readPreferences();
-}
-
-export function playPresenceSound(online: boolean) {
-  if (!readPreferences().soundEnabled || typeof window === "undefined") return;
-
-  const soundUrl = online
-    ? new URL("../assets/join.wav", import.meta.url).href
-    : new URL("../assets/leave.wav", import.meta.url).href;
-  const audio = new Audio(soundUrl);
-  audio.volume = 0.45;
-  void audio.play().catch((error: unknown) => {
-    console.warn("Could not play the collaborator presence sound:", error);
-  });
+  return getPreferencesSnapshot();
 }
 
 export function useNotificationPreferences() {
-  const [preferences, setPreferences] =
-    useState<NotificationPreferences>(DEFAULT_PREFERENCES);
-
-  useEffect(() => {
-    const syncPreferences = () => setPreferences(readPreferences());
-    syncPreferences();
-    window.addEventListener(CHANGE_EVENT, syncPreferences);
-    window.addEventListener("storage", syncPreferences);
-
+  const subscribe = useCallback((listener: () => void) => {
+    const onChange = () => listener();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== STORAGE_KEY) return;
+      cachedPreferences = readPreferences();
+      listener();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener(CHANGE_EVENT, onChange);
+      window.addEventListener("storage", onStorage);
+    }
     return () => {
-      window.removeEventListener(CHANGE_EVENT, syncPreferences);
-      window.removeEventListener("storage", syncPreferences);
+      if (typeof window !== "undefined") {
+        window.removeEventListener(CHANGE_EVENT, onChange);
+        window.removeEventListener("storage", onStorage);
+      }
     };
   }, []);
 
+  const getSnapshot = useCallback(() => getPreferencesSnapshot(), []);
+  const preferences = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
   const setPreference = useCallback(
-    (key: keyof NotificationPreferences, value: boolean) => {
-      const updated = { ...readPreferences(), [key]: value };
-      setPreferences(updated);
+    (key: keyof NotificationPreferences, value: boolean | number) => {
+      const updated = { ...getPreferencesSnapshot(), [key]: value };
       writePreferences(updated);
     },
     [],
@@ -100,7 +158,21 @@ export function useNotificationPreferences() {
     preferences,
     setSoundEnabled: (value: boolean) => setPreference("soundEnabled", value),
     setPopupEnabled: (value: boolean) => setPreference("popupEnabled", value),
-    setAlwaysShowCursor: (value: boolean) =>
-      setPreference("alwaysShowCursor", value),
+    setAlwaysShowCursor: (value: boolean) => setPreference("alwaysShowCursor", value),
+    setSoundVolume: (value: number) => setPreference("soundVolume", clampVolume(value)),
+    setCategoryPreference: (category: keyof NotificationCategoryPreferences, value: boolean) => {
+      const current = getPreferencesSnapshot();
+      const next = {
+        ...current,
+        categories: { ...current.categories, [category]: value },
+      };
+      writePreferences(next);
+    },
   };
+}
+
+export function playPresenceSound(online: boolean) {
+  const prefs = getNotificationPreferences();
+  if (!prefs.soundEnabled || !prefs.categories.presence) return;
+  void playSoundEngine(online ? "join" : "leave", prefs.soundVolume);
 }

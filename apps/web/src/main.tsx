@@ -19,7 +19,7 @@ createRoot(document.getElementById("root")!).render(
           <App />
         </BrowserRouter>
       </ThemeProvider>
-      <Toaster richColors />
+      <Toaster richColors position="bottom-left" offset={72} visibleToasts={3} />
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -132,6 +132,7 @@ export function EditorSidebar({
   onClose?: () => void;
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationAction | null>(
     null,
   );
@@ -143,6 +144,8 @@ export function EditorSidebar({
     setSoundEnabled,
     setPopupEnabled,
     setAlwaysShowCursor,
+    setCategoryPreference,
+    setSoundVolume,
   } = useNotificationPreferences();
 
   const {
@@ -150,7 +153,7 @@ export function EditorSidebar({
     isPending: membersPending,
     isError: membersError,
     refetch: refetchMembers,
-  } = useDocumentMembers(doc.id, isOwner);
+  } = useDocumentMembers(doc.id, true);
   const {
     data: sharing,
     error: sharingLoadError,
@@ -189,14 +192,36 @@ export function EditorSidebar({
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = window.location.href;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.append(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        input.remove();
+        if (!copied) throw new Error("Clipboard copy is not available");
+      }
       setCopiedLink(true);
       toast.success("Document link copied to clipboard");
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopiedLink(false), 2000);
+    } catch (error) {
+      console.warn("Could not copy document link:", error);
       toast.error("Failed to copy link");
     }
   };
+
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
 
   function confirmAction() {
     if (!confirmation) return;
@@ -255,7 +280,7 @@ export function EditorSidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col overflow-hidden bg-background/95 backdrop-blur transition-all duration-200",
+        "editor-sidebar flex h-full flex-col overflow-hidden bg-background/95 backdrop-blur transition-all duration-200",
         className,
       )}
     >
@@ -616,6 +641,47 @@ export function EditorSidebar({
                   checked={notificationPreferences.popupEnabled}
                   onCheckedChange={setPopupEnabled}
                   aria-label="Notification pop-up"
+                />
+              </label>
+              <label
+                htmlFor="notification-presence-category"
+                className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
+              >
+                <span className="text-sm font-medium text-foreground">Presence alerts</span>
+                <Switch
+                  id="notification-presence-category"
+                  checked={notificationPreferences.categories.presence}
+                  onCheckedChange={(value) => setCategoryPreference("presence", value)}
+                />
+              </label>
+              {isOwner && (
+                <label
+                  htmlFor="notification-access-category"
+                  className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
+                >
+                  <span className="text-sm font-medium text-foreground">Access alerts</span>
+                  <Switch
+                    id="notification-access-category"
+                    checked={notificationPreferences.categories.access}
+                    onCheckedChange={(value) => setCategoryPreference("access", value)}
+                  />
+                </label>
+              )}
+              <label
+                htmlFor="notification-volume"
+                className="flex items-center justify-between gap-3 px-3 py-3"
+              >
+                <span className="text-sm font-medium text-foreground">Sound volume</span>
+                <input
+                  id="notification-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={notificationPreferences.soundVolume}
+                  onChange={(event) => setSoundVolume(Number(event.currentTarget.value))}
+                  aria-valuetext={`${Math.round(notificationPreferences.soundVolume * 100)} percent`}
+                  className="w-24 accent-primary"
                 />
               </label>
               <label

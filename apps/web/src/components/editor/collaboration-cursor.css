@@ -56,12 +56,12 @@
   pointer-events: none;
   user-select: none;
 
-  transform: translateY(3px) scale(0.97);
+  transform: translateY(3px) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6)) scale(0.97);
   transition: transform 180ms ease-out;
 }
 
 .collaboration-cursor--active .collaboration-cursor__badge {
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6));
 }
 
 .always-show-collaboration-cursor .collaboration-carets__caret.collaboration-cursor {
@@ -69,7 +69,7 @@
 }
 
 .always-show-collaboration-cursor .collaboration-cursor__badge {
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6));
 }
 
 /* White text on dark/mid colors, near-black on light ones (yellow, mint...). */

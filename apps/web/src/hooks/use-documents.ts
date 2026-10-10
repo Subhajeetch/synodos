@@ -1,11 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createElement } from "react";
 import { toast } from "sonner";
-import { PersonToast } from "@/components/ui/person-toast";
-import {
-  getNotificationPreferences,
-  playPresenceSound,
-} from "@/hooks/use-notification-preferences";
 import type {
   DocumentAccessStatus,
   DocumentInvitation,
@@ -15,6 +9,7 @@ import type {
   DocumentSummary,
 } from "@synodos/shared";
 import { api, ApiError } from "@/lib/api";
+import { notifyPerson } from "@/lib/notifications/notifications";
 
 export const documentKeys = {
   all: ["documents"] as const,
@@ -29,34 +24,6 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
-export function notifyPresenceChange(
-  person: { name: string | null; email: string; image: string | null },
-  online: boolean,
-) {
-  const name = person.name || person.email;
-  playPresenceSound(online);
-  notifyPerson(
-    person,
-    online ? `${name} joined` : `${name} left`,
-    online ? "is now active in this document." : "is no longer active.",
-    online ? "success" : "info",
-  );
-}
-
-export function notifyMemberJoined(person: {
-  name: string | null;
-  email: string;
-  image: string | null;
-}) {
-  const name = person.name || person.email;
-  notifyPerson(
-    person,
-    `${name} joined the document`,
-    "They now have access to this document.",
-    "success",
-  );
-}
-
 function invalidateSharing(
   queryClient: ReturnType<typeof useQueryClient>,
   id: string,
@@ -64,40 +31,6 @@ function invalidateSharing(
   void queryClient.invalidateQueries({ queryKey: documentKeys.sharing(id) });
   void queryClient.invalidateQueries({ queryKey: documentKeys.members(id) });
   void queryClient.invalidateQueries({ queryKey: documentKeys.list() });
-}
-
-function notifyPerson(
-  person: { name: string | null; email: string; image: string | null },
-  title: string,
-  detail: string,
-  tone: "success" | "info" | "warning" | "error",
-) {
-  if (!getNotificationPreferences().popupEnabled) return;
-
-  toast.custom(
-    () =>
-      createElement(PersonToast, {
-        name: person.name || person.email,
-        image: person.image,
-        title,
-        detail,
-        tone,
-      }),
-    { duration: 4500 },
-  );
-}
-
-export function notifyAccessRequest(person: {
-  name: string | null;
-  email: string;
-  image: string | null;
-}) {
-  notifyPerson(
-    person,
-    "Access requested",
-    `${person.name || person.email} asked to join this document.`,
-    "info",
-  );
 }
 
 export function useDocuments() {
@@ -219,6 +152,7 @@ export function useAddDocumentInvitation(docId: string) {
         "Invitation sent",
         `${invitation.email} is invited as ${invitation.role}.`,
         "success",
+        docId,
       );
       invalidateSharing(queryClient, docId);
     },
@@ -241,6 +175,7 @@ export function useAcceptDocumentInvitation(docId: string) {
           "Invitation accepted",
           "You joined the document.",
           "success",
+          docId,
         );
       }
       void queryClient.invalidateQueries({
@@ -271,6 +206,7 @@ export function useRequestDocumentAccess(
         "Access request sent",
         "The document owner will review your request.",
         "info",
+        docId,
       );
       void queryClient.invalidateQueries({
         queryKey: documentKeys.access(docId),
@@ -308,6 +244,7 @@ export function useRejectJoinRequest(docId: string) {
         "Access request declined",
         "Access to this document was declined.",
         "warning",
+        docId,
       );
       invalidateSharing(queryClient, docId);
     },
@@ -328,6 +265,7 @@ export function useRevokeDocumentInvitation(docId: string) {
         "Invitation revoked",
         `The invitation for ${invitation.email} was revoked.`,
         "info",
+        docId,
       );
       invalidateSharing(queryClient, docId);
     },
@@ -348,6 +286,7 @@ export function useRemoveDocumentMember(docId: string) {
         "Collaborator removed",
         "Access to this document was removed.",
         "warning",
+        docId,
       );
       invalidateSharing(queryClient, docId);
     },
