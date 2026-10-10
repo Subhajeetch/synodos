@@ -88,9 +88,13 @@ export function addPageAfter(editor: Editor, pageIndex: number) {
     const blankPage = editor.schema.nodes.page.create({ title: "" }, [
       editor.schema.nodes.paragraph.create(),
     ]);
+    const transaction = editor.state.tr.insert(page.to, blankPage);
+    transaction.setSelection(
+      TextSelection.near(transaction.doc.resolve(page.to + 2)),
+    );
     return dispatchPageTransaction(
       editor,
-      editor.state.tr.insert(page.to, blankPage).scrollIntoView(),
+      transaction.scrollIntoView(),
     );
   });
 }

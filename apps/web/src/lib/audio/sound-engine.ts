@@ -239,27 +239,78 @@ export function playSound(soundId: SoundId, volume = DEFAULT_VOLUME) {
   lastPlayedAt.set(soundId, now);
   const bufferMaybe = bufferCache.get(soundId) ?? null;
   if (!bufferMaybe) {
-    void ensureAudioBuffer(soundId);
+    void ensureAudioBuffer(soundId).then((buffer) => {
+      if (
+        !buffer ||
+        audioContext !== ctx ||
+        ctx.state !== 'running' ||
+        !masterGain ||
+        concurrentVoices >= MAX_CONCURRENT_VOICES
+      ) {
+        return;
+      }
+      startBufferSound(ctx, masterGain, buffer, volume, soundId);
+    });
     return Promise.resolve();
   }
 
-  const source = ctx.createBufferSource();
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.01);
-  gain.gain.setValueAtTime(volume, ctx.currentTime + 0.15);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
-  source.buffer = bufferMaybe;
-  source.connect(gain);
-  gain.connect(masterGain);
-  concurrentVoices += 1;
-  source.onended = () => {
-    source.disconnect();
-    gain.disconnect();
-    concurrentVoices = Math.max(0, concurrentVoices - 1);
-  };
-  source.start();
+  startBufferSound(ctx, masterGain, bufferMaybe, volume, soundId);
   return Promise.resolve();
+}
+
+function startBufferSound(
+  ctx: AudioContext,
+  output: GainNode,
+  buffer: AudioBuffer,
+  volume: number,
+  soundId: SoundId,
+) {
+  const safeVolume = Number.isFinite(volume)
+    ? Math.min(1, Math.max(0, volume))
+    : DEFAULT_VOLUME;
+  if (safeVolume === 0) return;
+  let source: AudioBufferSourceNode | null = null;
+  let gain: GainNode | null = null;
+  let voiceReserved = false;
+  try {
+    source = ctx.createBufferSource();
+    gain = ctx.createGain();
+    const startAt = ctx.currentTime;
+    const attackDuration = Math.min(0.015, buffer.duration / 5);
+    const releaseDuration = Math.min(0.08, buffer.duration / 3);
+    const releaseAt = Math.max(
+      startAt + attackDuration,
+      startAt + buffer.duration - releaseDuration,
+    );
+    gain.gain.setValueAtTime(0.001, startAt);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(0.001, safeVolume),
+      startAt + attackDuration,
+    );
+    gain.gain.setValueAtTime(Math.max(0.001, safeVolume), releaseAt);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startAt + buffer.duration,
+    );
+    source.buffer = buffer;
+    source.connect(gain);
+    gain.connect(output);
+    concurrentVoices += 1;
+    voiceReserved = true;
+    source.onended = () => {
+      source?.disconnect();
+      gain?.disconnect();
+      concurrentVoices = Math.max(0, concurrentVoices - 1);
+    };
+    source.start(startAt);
+  } catch (error) {
+    source?.disconnect();
+    gain?.disconnect();
+    if (voiceReserved) {
+      concurrentVoices = Math.max(0, concurrentVoices - 1);
+    }
+    if (import.meta.env.DEV) console.warn('[sound-engine] playback failed', soundId, error);
+  }
 }
 
 export function registerSound(soundId: SoundId) {

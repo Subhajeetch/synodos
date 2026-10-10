@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Ellipsis,
   Loader2,
   Minus,
   PanelRight,
@@ -56,6 +57,11 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import {
   Tooltip,
@@ -100,6 +106,7 @@ import "./editor-document.css";
 import { EditorSidebar } from "./editor-sidebar";
 import { StyledTableCell } from "./table-cell";
 import { EditorToolbar } from "./editor-toolbar";
+import { AddPageButton } from "./page-controls";
 import { Page } from "./page";
 import { getPageRanges } from "./page-actions";
 import { InviteMemberDialog } from "./invite-member-dialog";
@@ -185,6 +192,9 @@ function EditorPagesFooter({
 }) {
   const [thumbnailsOpen, setThumbnailsOpen] = useState(false);
   const [zoomPresetsOpen, setZoomPresetsOpen] = useState(false);
+  const [footerWidth, setFooterWidth] = useState(0);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const footerRef = useRef<HTMLElement>(null);
   const zoomPresetMenuRef = useRef<HTMLDivElement>(null);
   const zoom = useSyncExternalStore(subscribeZoom, getZoom, getZoom);
   const editorState = useEditorState({
@@ -220,12 +230,26 @@ function EditorPagesFooter({
   );
   const currentPage = editorState.currentPage;
   const PageToggleIcon = thumbnailsOpen ? ChevronDown : ChevronUp;
+  const compact = footerWidth < 960;
+  const narrow = footerWidth < 700;
 
   useEffect(() => {
     if (zoomPresetsOpen) {
       zoomPresetMenuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     }
   }, [zoomPresetsOpen]);
+
+  useEffect(() => {
+    const footer = footerRef.current;
+    if (!footer || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      setFooterWidth(entry?.contentRect.width ?? 0);
+      setMoreOpen(false);
+      setZoomPresetsOpen(false);
+    });
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
 
   function goToPage(position: number) {
     editor.chain().focus().setTextSelection(position).scrollIntoView().run();
@@ -259,8 +283,148 @@ function EditorPagesFooter({
     setZoomPresetsOpen(false);
   }
 
+  const zoomSlider = (
+    <div className="relative w-28 sm:w-40">
+      <Slider
+        min={0}
+        max={100}
+        step={1}
+        value={[Math.round(zoomToLogSlider(zoom) * 100)]}
+        aria-label="Zoom"
+        aria-valuetext={`${Math.round(zoom * 100)} percent`}
+        onValueChange={(value) => {
+          const nextZoom = Array.isArray(value) ? value[0] : value;
+          if (typeof nextZoom === "number") {
+            onZoomChange(logSliderToZoom(nextZoom / 100), "manual");
+          }
+        }}
+      />
+    </div>
+  );
+  const zoomPresetControl = (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="w-12 px-1 tabular-nums text-muted-foreground"
+        aria-label="Zoom percentage and presets"
+        aria-haspopup="menu"
+        aria-expanded={zoomPresetsOpen}
+        onClick={() => setZoomPresetsOpen((open) => !open)}
+      >
+        {Math.round(zoom * 100)}%
+      </Button>
+      {zoomPresetsOpen && (
+        <div
+          ref={zoomPresetMenuRef}
+          role="menu"
+          aria-label="Zoom presets"
+          onKeyDown={(event) => {
+            const items = Array.from(
+              event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                '[role="menuitem"]',
+              ),
+            );
+            const index = items.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setZoomPresetsOpen(false);
+              event.currentTarget
+                .previousElementSibling?.querySelector("button")
+                ?.focus();
+            } else if (
+              (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+              items.length
+            ) {
+              event.preventDefault();
+              const offset = event.key === "ArrowDown" ? 1 : -1;
+              items[(index + offset + items.length) % items.length]?.focus();
+            } else if (event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              items[event.key === "Home" ? 0 : items.length - 1]?.focus();
+            }
+          }}
+          className="absolute bottom-full left-1/2 z-30 mb-2 flex min-w-36 -translate-x-1/2 flex-col rounded-md border bg-popover p-1 shadow-lg"
+        >
+          {[
+            ["fit-width", "Fit width"],
+            ["fit-page", "Fit page"],
+            ...[50, 75, 100, 125, 150, 200, 300].map((percent) => [
+              String(percent),
+              `${percent}%`,
+            ]),
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitem"
+              className="rounded px-3 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+              onClick={() => selectZoomPreset(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+  const fitWidthButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        const canvas = editor.view.dom.closest<HTMLElement>(".editor-canvas");
+        if (canvas) {
+          onZoomChange(
+            Math.min(3, Math.max(0.25, (canvas.clientWidth - 32) / 794)),
+            "fit-width",
+          );
+        }
+      }}
+    >
+      Fit width
+    </Button>
+  );
+  const handButton = (
+    <Button
+      type="button"
+      variant={handToolActive ? "secondary" : "ghost"}
+      size="sm"
+      aria-pressed={handToolActive}
+      onClick={onToggleHandTool}
+    >
+      Hand
+    </Button>
+  );
+  const pagesButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      aria-expanded={thumbnailsOpen}
+      aria-controls={thumbnailsOpen ? "editor-page-thumbnails" : undefined}
+      aria-label="Toggle page thumbnails"
+      onClick={() => setThumbnailsOpen((open) => !open)}
+      className="gap-1.5 px-2"
+    >
+      <PanelsTopLeft className="size-4" aria-hidden="true" />
+      <span>Pages</span>
+      <PageToggleIcon
+        className="size-3.5 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </Button>
+  );
+
   return (
-    <footer className="relative z-20 flex h-14 shrink-0 items-center justify-center border-t bg-background px-4 shadow-[0_-2px_8px_rgb(15_23_42/0.04)]">
+    <footer
+      ref={footerRef}
+      className="relative z-20 flex h-14 w-full shrink-0 items-center justify-center border-t bg-background px-2 shadow-[0_-2px_8px_rgb(15_23_42/0.04)] sm:px-4"
+    >
       {thumbnailsOpen && (
         <div
           id="editor-page-thumbnails"
@@ -318,160 +482,114 @@ function EditorPagesFooter({
         </div>
       )}
 
-      <div className="flex items-center gap-3 text-sm">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom out"
-          disabled={zoom <= 0.25}
-          onClick={() => onZoomChange(zoom / 1.25, "manual")}
-        >
-          <Minus className="size-4" aria-hidden="true" />
-        </Button>
-        <div className="relative w-28 sm:w-40">
-          <Slider
-            min={0}
-            max={100}
-            step={1}
-            value={[Math.round(zoomToLogSlider(zoom) * 100)]}
-            aria-label="Zoom"
-            aria-valuetext={`${Math.round(zoom * 100)} percent`}
-            onValueChange={(value) => {
-              const nextZoom = Array.isArray(value) ? value[0] : value;
-              if (typeof nextZoom === "number") {
-                onZoomChange(logSliderToZoom(nextZoom / 100), "manual");
-              }
-            }}
-          />
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom in"
-          disabled={zoom >= 3}
-          onClick={() => onZoomChange(zoom * 1.25, "manual")}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </Button>
-        <div className="relative">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="w-12 px-1 tabular-nums text-muted-foreground"
-            aria-label="Zoom percentage and presets"
-            aria-haspopup="menu"
-            aria-expanded={zoomPresetsOpen}
-            onClick={() => setZoomPresetsOpen((open) => !open)}
-          >
-            {Math.round(zoom * 100)}%
-          </Button>
-          {zoomPresetsOpen && (
-            <div
-              ref={zoomPresetMenuRef}
-              role="menu"
-              aria-label="Zoom presets"
-              onKeyDown={(event) => {
-                const items = Array.from(
-                  event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                    '[role="menuitem"]',
-                  ),
-                );
-                const index = items.indexOf(
-                  document.activeElement as HTMLButtonElement,
-                );
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  setZoomPresetsOpen(false);
-                  event.currentTarget
-                    .previousElementSibling?.querySelector("button")
-                    ?.focus();
-                } else if (
-                  (event.key === "ArrowDown" || event.key === "ArrowUp") &&
-                  items.length
-                ) {
-                  event.preventDefault();
-                  const offset = event.key === "ArrowDown" ? 1 : -1;
-                  items[(index + offset + items.length) % items.length]?.focus();
-                } else if (event.key === "Home" || event.key === "End") {
-                  event.preventDefault();
-                  items[event.key === "Home" ? 0 : items.length - 1]?.focus();
-                }
-              }}
-              className="absolute bottom-full left-1/2 z-30 mb-2 flex min-w-36 -translate-x-1/2 flex-col rounded-md border bg-popover p-1 shadow-lg"
+      <div className="flex min-w-0 max-w-full items-center justify-center gap-1 text-sm sm:gap-2">
+        {!narrow && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Zoom out"
+              disabled={zoom <= 0.25}
+              onClick={() => onZoomChange(zoom / 1.25, "manual")}
             >
-              {[
-                ["fit-width", "Fit width"],
-                ["fit-page", "Fit page"],
-                ...[50, 75, 100, 125, 150, 200, 300].map((percent) => [
-                  String(percent),
-                  `${percent}%`,
-                ]),
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="menuitem"
-                  className="rounded px-3 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                  onClick={() => selectZoomPreset(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const canvas = editor.view.dom.closest<HTMLElement>(".editor-canvas");
-            if (canvas) {
-              onZoomChange(
-                Math.min(3, Math.max(0.25, (canvas.clientWidth - 32) / 794)),
-                "fit-width",
-              );
-            }
-          }}
+              <Minus className="size-4" aria-hidden="true" />
+            </Button>
+            {zoomSlider}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Zoom in"
+              disabled={zoom >= 3}
+              onClick={() => onZoomChange(zoom * 1.25, "manual")}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </Button>
+          </>
+        )}
+        {zoomPresetControl}
+        {!narrow && (
+          <>
+            {fitWidthButton}
+            {handButton}
+            <span className="h-5 w-px bg-border" aria-hidden="true" />
+            {pagesButton}
+          </>
+        )}
+        <span
+          className="min-w-12 tabular-nums text-muted-foreground"
+          aria-live="polite"
         >
-          Fit width
-        </Button>
-        <Button
-          type="button"
-          variant={handToolActive ? "secondary" : "ghost"}
-          size="sm"
-          aria-pressed={handToolActive}
-          onClick={onToggleHandTool}
-        >
-          Hand
-        </Button>
-        <span className="h-5 w-px bg-border" aria-hidden="true" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-expanded={thumbnailsOpen}
-          aria-controls={thumbnailsOpen ? "editor-page-thumbnails" : undefined}
-          aria-label="Toggle page thumbnails"
-          onClick={() => setThumbnailsOpen((open) => !open)}
-          className="gap-1.5 px-2"
-        >
-          <PanelsTopLeft className="size-4" aria-hidden="true" />
-          <span>Pages</span>
-          <PageToggleIcon
-            className="size-3.5 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </Button>
-        <span className="min-w-12 tabular-nums text-muted-foreground" aria-live="polite">
           {currentPage} / {editorState.pageCount}
         </span>
-        <span className="hidden tabular-nums text-xs text-muted-foreground md:inline">
-          {editorState.wordCount} words · {editorState.characterCount} characters
-        </span>
+        {compact && (
+          <Popover open={moreOpen} onOpenChange={setMoreOpen}>
+            <PopoverTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 gap-1 px-2"
+                  aria-label="More view controls"
+                  aria-expanded={moreOpen}
+                  aria-haspopup="dialog"
+                />
+              }
+            >
+              <Ellipsis className="size-4" aria-hidden="true" />
+              <span className="max-[360px]:hidden">More</span>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="end"
+              className="max-h-[min(70dvh,32rem)] w-[min(22rem,calc(100vw-1rem))] gap-3 overflow-y-auto p-3"
+            >
+              {narrow && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Zoom out"
+                    disabled={zoom <= 0.25}
+                    onClick={() => onZoomChange(zoom / 1.25, "manual")}
+                  >
+                    <Minus className="size-4" aria-hidden="true" />
+                  </Button>
+                  {zoomSlider}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Zoom in"
+                    disabled={zoom >= 3}
+                    onClick={() => onZoomChange(zoom * 1.25, "manual")}
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              )}
+              {narrow && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {fitWidthButton}
+                  {handButton}
+                  {pagesButton}
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 border-t pt-2 text-xs text-muted-foreground">
+                <span>{editorState.wordCount} words</span>
+                <span>{editorState.characterCount} characters</span>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+        {!compact && (
+          <span className="hidden tabular-nums text-xs text-muted-foreground md:inline">
+            {editorState.wordCount} words · {editorState.characterCount} characters
+          </span>
+        )}
       </div>
     </footer>
   );
@@ -1072,15 +1190,14 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     function handleWheel(event: WheelEvent) {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
+      const discrete = event.deltaMode === WheelEvent.DOM_DELTA_LINE;
       const next = clampZoom(
-        pendingZoomRef.current * Math.exp(-event.deltaY * 0.0035),
+        pendingZoomRef.current *
+          Math.exp(-event.deltaY * (discrete ? 0.004 : 0.006)),
       );
       const reducedMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
-      const discrete =
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE ||
-        Math.abs(event.deltaY) >= 40;
       if (!discrete || reducedMotion) {
         scheduleZoom(next, event.clientX, event.clientY);
         return;
@@ -1091,7 +1208,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       wheelStartedAt = performance.now();
       if (wheelFrame !== null) window.cancelAnimationFrame(wheelFrame);
       const animate = (now: number) => {
-        const progress = Math.min(1, (now - wheelStartedAt) / 160);
+        const progress = Math.min(1, (now - wheelStartedAt) / 120);
         const eased = 1 - (1 - progress) ** 3;
         scheduleZoom(
           Math.exp(
@@ -1546,6 +1663,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
                     )}
                   >
                     <EditorContent editor={editor} />
+                    <AddPageButton editor={editor} editable={editable} />
                   </div>
                 </div>
               </div>

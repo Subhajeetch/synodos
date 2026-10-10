@@ -100,5 +100,13 @@ describe('sound engine', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(source.start).toHaveBeenCalledTimes(1);
+    expect(gain.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(
+      expect.any(Number),
+      1.015,
+    );
+    expect(gain.gain.exponentialRampToValueAtTime).toHaveBeenLastCalledWith(
+      0.0001,
+      2,
+    );
   });
 });

@@ -37,9 +37,9 @@ describe("notification dispatch", () => {
       image: null,
     };
     notifications.notifyPresenceChange(person, false, "doc");
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(400);
     notifications.notifyPresenceChange(person, true, "doc");
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(1000);
 
     expect(toast.custom).not.toHaveBeenCalled();
   });
@@ -61,5 +61,41 @@ describe("notification dispatch", () => {
     expect(toast.custom).toHaveBeenCalledTimes(1);
     notifications.dismissNotificationScope("doc");
     expect(toast.dismiss).toHaveBeenCalledWith("doc:presence-join:batch");
+  });
+
+  it("shows a join notification with only a brief batching delay", async () => {
+    const notifications = await import("./notifications");
+    notifications.notifyPresenceChange(
+      { id: "u1", name: "Alice", email: "a@example.com", image: null },
+      true,
+      "doc",
+    );
+
+    await vi.advanceTimersByTimeAsync(149);
+    expect(toast.custom).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(toast.custom).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies about a leave promptly but ignores a short reconnect", async () => {
+    const notifications = await import("./notifications");
+    const person = {
+      id: "u1",
+      name: "Alice",
+      email: "a@example.com",
+      image: null,
+    };
+    notifications.notifyPresenceChange(person, false, "doc");
+
+    await vi.advanceTimersByTimeAsync(499);
+    expect(toast.custom).not.toHaveBeenCalled();
+    notifications.notifyPresenceChange(person, true, "doc");
+    await vi.advanceTimersByTimeAsync(650);
+    expect(toast.custom).not.toHaveBeenCalled();
+
+    notifications.notifyPresenceChange(person, false, "doc");
+    await vi.advanceTimersByTimeAsync(650);
+    expect(toast.custom).toHaveBeenCalledTimes(1);
   });
 });

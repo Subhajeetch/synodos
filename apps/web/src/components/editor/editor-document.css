@@ -62,7 +62,7 @@
   box-sizing: border-box;
   width: 100%;
   color: var(--text-body);
-  background: #fff;
+  background: transparent;
   font-family: var(--font-sans);
 }
 
@@ -70,7 +70,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0;
+  gap: 28px;
   position: relative;
   width: 100%;
   font-size: var(--doc-body-size);
@@ -94,6 +94,10 @@
   transform: none;
 }
 
+.editor-document .editor-add-page {
+  margin-top: 12px;
+}
+
 .editor-document .editor-page-node > [aria-label$="controls"] {
   min-height: 44px;
   margin-bottom: 8px;
@@ -108,6 +112,17 @@
   --border: 0 0% 90%;
   --input: 0 0% 90%;
   --ring: 0 0% 70%;
+}
+
+.dark .editor-document .editor-add-page {
+  border-color: rgb(229 229 229 / 0.8);
+  background: #fff;
+  color: #171717;
+}
+
+.dark .editor-document .editor-add-page:hover:not(:disabled) {
+  background: #f5f5f5;
+  color: #171717;
 }
 
 .dark .editor-document .editor-page-node > [aria-label$="controls"] input,
@@ -163,6 +178,33 @@
   .editor-document
   .editor-page-node
   > [aria-label$="controls"]
+  button.text-destructive:not(:disabled) {
+  color: var(--destructive);
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button.text-destructive:hover:not(:disabled),
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button.text-destructive:focus-visible:not(:disabled),
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
+  button.text-destructive[data-variant="ghost"]:active:not(:disabled) {
+  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  color: var(--destructive);
+}
+
+.dark
+  .editor-document
+  .editor-page-node
+  > [aria-label$="controls"]
   button:disabled {
   color: #a3a3a3;
 }
@@ -181,16 +223,6 @@
     0 2px 8px rgb(15 23 42 / 0.08),
     0 24px 56px rgb(15 23 42 / 0.08);
   break-after: page;
-}
-
-.editor-document .editor-page-surface::after {
-  position: absolute;
-  top: 1123px;
-  right: 0;
-  left: 0;
-  border-top: 1px dashed rgb(100 116 139 / 0.55);
-  content: "";
-  pointer-events: none;
 }
 
 .editor-page-node--overflow .editor-page-surface::before {
@@ -381,6 +413,7 @@
   .editor-sidebar,
   footer,
   .editor-page-node > [aria-label$="controls"],
+  .editor-add-page,
   .collaboration-cursor,
   [data-collaboration-cursor],
   .ProseMirror-yjs-selection,
@@ -428,12 +461,15 @@
     break-after: page;
   }
 
+  .editor-document .ProseMirror {
+    gap: 0 !important;
+  }
+
   .editor-document .editor-page-node {
     break-after: page;
   }
 
-  .editor-document .editor-page-surface::before,
-  .editor-document .editor-page-surface::after {
+  .editor-document .editor-page-surface::before {
     display: none !important;
   }
 }

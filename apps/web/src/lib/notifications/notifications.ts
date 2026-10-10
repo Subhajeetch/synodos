@@ -25,8 +25,8 @@ type PersonEvent = {
 };
 
 const DEDUPE_MS = 5000;
-const COALESCE_MS = 1200;
-const MAX_COALESCE_MS = 3000;
+const COALESCE_MS = 150;
+const MAX_COALESCE_MS = 350;
 const pendingEvents: PersonEvent[] = [];
 const delayedLeaves = new Map<
   string,
@@ -308,7 +308,7 @@ export function notifyPresenceChange(
     const timer = setTimeout(() => {
       delayedLeaves.delete(key);
       enqueue(event);
-    }, 4000);
+    }, 500);
     delayedLeaves.set(key, { event, timer });
     return;
   }

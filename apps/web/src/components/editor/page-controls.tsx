@@ -1,4 +1,11 @@
-import { ArrowDown, ArrowUp, CopyPlus, PlusSquare, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  CopyPlus,
+  Plus,
+  PlusSquare,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   addPageAfter,
@@ -116,5 +123,31 @@ export function PageControls({
         </Button>
       </div>
     </div>
+  );
+}
+
+export function AddPageButton({
+  editor,
+  editable,
+}: {
+  editor: Editor;
+  editable: boolean;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="editor-add-page h-9 w-full justify-center gap-1.5 rounded-lg border-border/60 bg-muted/50 text-foreground shadow-sm transition-colors hover:bg-muted"
+      aria-label="Add a new page at the end of the document"
+      disabled={!editable}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() =>
+        addPageAfter(editor, getPageRanges(editor.state.doc).length - 1)
+      }
+    >
+      <Plus className="size-3.5" aria-hidden="true" />
+      Add page
+    </Button>
   );
 }
