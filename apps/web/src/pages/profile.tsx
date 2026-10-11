@@ -1,7 +1,15 @@
-import { Bell, Mail, Shield, UserRound, Settings as SettingsIcon } from "lucide-react";
+import { Bell, Mail, Shield, UserRound } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
-import { UserAvatar } from "@/components/user-avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function getInitials(name?: string | null, email?: string | null) {
+  const source = name?.trim() || email?.trim() || "?";
+  const parts = source.split(/\s+/).filter(Boolean);
+  return parts.length > 1
+    ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    : source.slice(0, 2).toUpperCase();
+}
 
 export default function ProfilePage() {
   const { data: session } = authClient.useSession();
@@ -18,7 +26,19 @@ export default function ProfilePage() {
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
         <div className="relative flex flex-col gap-6 p-6 pt-12 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-center gap-5">
-            <UserAvatar name={user?.name} email={user?.email} className="size-20 rounded-xl border-4 border-background text-2xl shadow-md" />
+            <Avatar className="size-20 rounded-xl border-4 border-background shadow-md">
+              {user?.image && (
+                <AvatarImage
+                  src={user.image}
+                  alt={user.name ?? "Profile picture"}
+                  referrerPolicy="no-referrer"
+                  className="rounded-xl"
+                />
+              )}
+              <AvatarFallback className="rounded-xl bg-gradient-to-br from-primary/90 to-primary text-2xl font-semibold text-primary-foreground">
+                {getInitials(user?.name, user?.email)}
+              </AvatarFallback>
+            </Avatar>
             <div className="min-w-0 pb-1">
               <h2 className="truncate text-2xl font-bold tracking-tight text-foreground">
                 {user?.name ?? "Your profile"}
@@ -80,20 +100,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card id="settings" className="rounded-xl border-border/50 bg-card/40 shadow-sm transition-all hover:border-border/80 hover:shadow-md">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2.5 text-lg font-semibold">
-            <SettingsIcon className="size-5 text-primary" /> Workspace Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p className="max-w-2xl leading-relaxed">
-            Theme, sharing defaults, and notification controls will live here as the
-            collaboration settings grow. We're constantly working on bringing more customization options to your workspace.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

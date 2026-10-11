@@ -79,8 +79,8 @@ export function InviteMemberDialog({
                 onClick={() => setInviteRole("editor")}
                 className={
                   inviteRole === "editor"
-                    ? "bg-primary/20 hover:bg-primary/30"
-                    : "bg-muted hover:bg-muted/80"
+                    ? "bg-primary/20 hover:bg-primary/30 text-foreground"
+                    : "bg-muted hover:bg-muted/80 text-foreground/90"
                 }
                 disabled={addInvitation.isPending}
               >
@@ -92,8 +92,8 @@ export function InviteMemberDialog({
                 aria-pressed={inviteRole === "viewer"}
                 className={
                   inviteRole === "viewer"
-                    ? "bg-primary/20 hover:bg-primary/30"
-                    : "bg-muted hover:bg-muted/80"
+                    ? "bg-primary/20 hover:bg-primary/30 text-foreground"
+                    : "bg-muted hover:bg-muted/80 text-foreground/90"
                 }
                 onClick={() => setInviteRole("viewer")}
                 disabled={addInvitation.isPending}
@@ -107,6 +107,7 @@ export function InviteMemberDialog({
           <Button
             type="submit"
             disabled={addInvitation.isPending || !email.trim()}
+            className="text-foreground"
           >
             {addInvitation.isPending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

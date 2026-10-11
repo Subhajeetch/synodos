@@ -11,7 +11,7 @@ import {
   loadDocumentState,
   saveDocumentState,
 } from "@synodos/db";
-import { canEdit } from "@synodos/shared";
+import { canEdit, USER_EVENTS_ROOM_PREFIX } from "@synodos/shared";
 import { redisConfigFromUrl } from "./redis-config";
 import { listenForAccessChanges } from "./access-listener";
 
@@ -39,9 +39,13 @@ const server = new Server({
     new Redis({ ...redisConfigFromUrl(env.REDIS_URL), prefix: "synodos" }),
 
     new Database({
-      fetch: async ({ documentName }) => loadDocumentState(db, documentName),
+      fetch: async ({ documentName }) =>
+        documentName.startsWith(USER_EVENTS_ROOM_PREFIX)
+          ? null
+          : loadDocumentState(db, documentName),
 
       store: async ({ documentName, state }) => {
+        if (documentName.startsWith(USER_EVENTS_ROOM_PREFIX)) return;
 
         const touched = await db
           .update(documents)
@@ -57,9 +61,6 @@ const server = new Server({
 
   async onAuthenticate({ token, documentName, connectionConfig }) {
     if (!token) throw new Error("Unauthorized");
-    if (!z.uuid().safeParse(documentName).success) {
-      throw new Error("Invalid document");
-    }
 
     let userId: string;
     try {
@@ -75,6 +76,18 @@ const server = new Server({
         error instanceof Error ? error.message : "Unknown verification error",
       );
       throw new Error("Unauthorized");
+    }
+
+    if (documentName.startsWith(USER_EVENTS_ROOM_PREFIX)) {
+      if (documentName !== `${USER_EVENTS_ROOM_PREFIX}${userId}`) {
+        throw new Error("Forbidden");
+      }
+      connectionConfig.readOnly = true;
+      return { userId, role: "viewer" };
+    }
+
+    if (!z.uuid().safeParse(documentName).success) {
+      throw new Error("Invalid document");
     }
 
     const role = await getDocumentRole(db, userId, documentName);

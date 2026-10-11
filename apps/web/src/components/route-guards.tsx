@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { authClient } from "@/lib/auth-client";
+import { NotificationToastListener } from "@/components/notification-toast-listener";
 
 export function FullPageSpinner() {
   return (
@@ -19,7 +20,12 @@ export function RequireAuth() {
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
-  return <Outlet />;
+  return (
+    <>
+      <NotificationToastListener />
+      <Outlet />
+    </>
+  );
 }
 
 // logged in can pass to dash

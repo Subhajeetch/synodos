@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
   type ReactElement,
@@ -334,10 +335,11 @@ export function EditorToolbar({ editor, disabled }: Props) {
   function selectMenu(
     label: string,
     value: string,
-    options: { value: string; label: string }[],
+    options: { value: string; label: string; style?: CSSProperties }[],
     onSelect: (value: string) => void,
     displayValue?: string,
   ) {
+    const selectedOption = options.find((option) => option.value === value);
     return (
       <DropdownMenu key={label}>
         <DropdownMenuTrigger
@@ -354,7 +356,16 @@ export function EditorToolbar({ editor, disabled }: Props) {
             />
           }
         >
-          <span className="truncate">{displayValue ?? label}</span>
+          <span
+            className="truncate"
+            style={
+              selectedOption?.style?.fontFamily
+                ? { fontFamily: selectedOption.style.fontFamily }
+                : undefined
+            }
+          >
+            {displayValue ?? label}
+          </span>
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-44">
@@ -367,7 +378,7 @@ export function EditorToolbar({ editor, disabled }: Props) {
                 onClick={() => onSelect(option.value)}
                 className="cursor-pointer"
               >
-                {option.label}
+                <span style={option.style}>{option.label}</span>
                 {option.value === value && (
                   <Check className="ml-auto size-4" aria-hidden="true" />
                 )}
@@ -389,10 +400,10 @@ export function EditorToolbar({ editor, disabled }: Props) {
           state.h1 ? "1" : state.h2 ? "2" : state.h3 ? "3" : state.h4 ? "4" : "p",
           [
             { value: "p", label: "Paragraph" },
-            { value: "1", label: "Heading 1" },
-            { value: "2", label: "Heading 2" },
-            { value: "3", label: "Heading 3" },
-            { value: "4", label: "Heading 4" },
+            { value: "1", label: "Heading 1", style: { fontSize: "1.5rem" } },
+            { value: "2", label: "Heading 2", style: { fontSize: "1.25rem" } },
+            { value: "3", label: "Heading 3", style: { fontSize: "1.125rem" } },
+            { value: "4", label: "Heading 4", style: { fontSize: "1rem" } },
           ],
           (value) =>
             run(() =>
@@ -410,6 +421,7 @@ export function EditorToolbar({ editor, disabled }: Props) {
             ...SYSTEM_FONTS.map((font) => ({
               value: font,
               label: font.split(",")[0] ?? font,
+              style: { fontFamily: font },
             })),
           ],
           (value) =>
