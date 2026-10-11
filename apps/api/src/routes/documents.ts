@@ -15,6 +15,7 @@ import {
 import { db } from "../db";
 import { requireUser } from "../lib/require-user";
 import { publishAccessChanged } from "../lib/access-events";
+import { createNotification } from "../lib/notifications";
 
 const {
   documents,
@@ -129,8 +130,33 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     if (!role) return reply.code(404).send({ error: "Not found" });
     if (role !== "owner") return reply.code(403).send({ error: "Forbidden" });
 
+    const [document] = await db
+      .select({ title: documents.title })
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    if (!document) return reply.code(404).send({ error: "Not found" });
+
+    const members = await db
+      .select({ userId: documentMembers.userId })
+      .from(documentMembers)
+      .where(eq(documentMembers.documentId, id));
     await db.delete(documents).where(eq(documents.id, id));
-    await publishAccessChanged({ documentId: id, userId: null }); // kick everyone
+    await publishAccessChanged({ documentId: id, userId: null });
+    await Promise.all(
+      members
+        .filter((member) => member.userId !== request.user.id)
+        .map((member) =>
+          createNotification({
+            userId: member.userId,
+            actorId: request.user.id,
+            documentId: null,
+            type: "document_deleted",
+            title: "A shared document was deleted",
+            message: `"${document.title}" was deleted by ${request.user.name}.`,
+          }),
+        ),
+    );
     return reply.code(204).send();
   });
 
@@ -264,7 +290,11 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
   app.post("/documents/:id/join-requests", async (request, reply) => {
     const { id } = documentIdParamSchema.parse(request.params);
     const [doc] = await db
-      .select({ id: documents.id })
+      .select({
+        id: documents.id,
+        ownerId: documents.ownerId,
+        title: documents.title,
+      })
       .from(documents)
       .where(eq(documents.id, id))
       .limit(1);
@@ -396,6 +426,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         });
     }
 
+    if (result.status === "created") {
+      await createNotification({
+        userId: doc.ownerId,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_join_request_received",
+        title: `${request.user.name} requested access`,
+        message: `They requested access to "${doc.title}".`,
+      });
+    }
+
     return reply.code(201).send({ status: "requested" });
   });
 
@@ -414,6 +455,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           error: "Only the document owner can invite collaborators",
           code: "OWNER_REQUIRED",
         });
+    }
+
+    const [document] = await db
+      .select({ title: documents.title })
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    if (!document) {
+      return reply
+        .code(404)
+        .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
     }
 
     const [target] = await db
@@ -453,7 +505,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       if (membership) return { status: "member" as const };
 
       const [existingInvitation] = await tx
-        .select({ id: documentInvitations.id })
+        .select({
+          id: documentInvitations.id,
+          role: documentInvitations.role,
+        })
         .from(documentInvitations)
         .where(
           and(
@@ -522,7 +577,11 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         });
 
       if (!invitation) throw new Error("Failed to create document invitation");
-      return { status: "invited" as const, invitation };
+      return {
+        status: "invited" as const,
+        invitation,
+        notify: !existingInvitation || existingInvitation.role !== body.role,
+      };
     });
 
     if (result.status === "member") {
@@ -540,6 +599,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
           code: "MEMBER_LIMIT_REACHED",
         });
+    }
+
+    if (result.notify) {
+      await createNotification({
+        userId: target.id,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_invitation_received",
+        title: `${request.user.name} invited you`,
+        message: `You were invited to "${document.title}" as a ${body.role}.`,
+      });
     }
 
     return reply.code(201).send({
@@ -640,6 +710,21 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         });
     }
     if (result.status === "accepted") {
+      const [document] = await db
+        .select({ ownerId: documents.ownerId, title: documents.title })
+        .from(documents)
+        .where(eq(documents.id, id))
+        .limit(1);
+      if (document) {
+        await createNotification({
+          userId: document.ownerId,
+          actorId: request.user.id,
+          documentId: id,
+          type: "document_invitation_accepted",
+          title: `${request.user.name} accepted your invitation`,
+          message: `They joined "${document.title}".`,
+        });
+      }
       await publishAccessChanged({ documentId: id, userId: request.user.id });
       return { status: "accepted", member: result.member };
     }
@@ -666,6 +751,16 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             code: "OWNER_REQUIRED",
           });
       }
+      const [document] = await db
+        .select({ title: documents.title })
+        .from(documents)
+        .where(eq(documents.id, id))
+        .limit(1);
+      if (!document) {
+        return reply
+          .code(404)
+          .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
+      }
       const [deleted] = await db
         .delete(documentInvitations)
         .where(
@@ -674,7 +769,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             eq(documentInvitations.documentId, id),
           ),
         )
-        .returning({ id: documentInvitations.id });
+        .returning({
+          id: documentInvitations.id,
+          userId: documentInvitations.userId,
+        });
       if (!deleted) {
         return reply
           .code(404)
@@ -683,6 +781,14 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             code: "INVITATION_NOT_FOUND",
           });
       }
+      await createNotification({
+        userId: deleted.userId,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_invitation_revoked",
+        title: `${request.user.name} revoked an invitation`,
+        message: `Your invitation to "${document.title}" was revoked.`,
+      });
       return reply.code(204).send();
     },
   );
@@ -709,6 +815,16 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             error: "Only the document owner can review join requests",
             code: "OWNER_REQUIRED",
           });
+      }
+      const [document] = await db
+        .select({ title: documents.title })
+        .from(documents)
+        .where(eq(documents.id, id))
+        .limit(1);
+      if (!document) {
+        return reply
+          .code(404)
+          .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
       }
 
       const result = await db.transaction(async (tx) => {
@@ -763,6 +879,14 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         documentId: id,
         userId: result.member.userId,
       });
+      await createNotification({
+        userId: result.member.userId,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_join_request_approved",
+        title: `${request.user.name} approved your request`,
+        message: `You now have access to "${document.title}" as a ${memberRole}.`,
+      });
       return reply
         .code(201)
         .send({ ...result.member, role: memberRole });
@@ -789,6 +913,16 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             code: "OWNER_REQUIRED",
           });
       }
+      const [document] = await db
+        .select({ title: documents.title })
+        .from(documents)
+        .where(eq(documents.id, id))
+        .limit(1);
+      if (!document) {
+        return reply
+          .code(404)
+          .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
+      }
       const [rejected] = await db
         .update(documentJoinRequests)
         .set({ status: "rejected" })
@@ -799,7 +933,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             eq(documentJoinRequests.status, "pending"),
           ),
         )
-        .returning({ id: documentJoinRequests.id });
+        .returning({
+          id: documentJoinRequests.id,
+          userId: documentJoinRequests.userId,
+        });
       if (!rejected) {
         return reply
           .code(404)
@@ -808,6 +945,14 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
             code: "REQUEST_NOT_FOUND",
           });
       }
+      await createNotification({
+        userId: rejected.userId,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_join_request_rejected",
+        title: `${request.user.name} declined your request`,
+        message: `Your request to join "${document.title}" was declined.`,
+      });
       return reply.code(204).send();
     },
   );
@@ -926,6 +1071,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
 
       return {
         status: "ok" as const,
+        wasMember: existing !== undefined,
         roleChanged: existing !== undefined && existing.role !== body.role,
       };
     });
@@ -935,6 +1081,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
         code: "MEMBER_LIMIT_REACHED",
       });
+    }
+
+    const [document] = await db
+      .select({ title: documents.title })
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    if (!document) {
+      return reply
+        .code(404)
+        .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
     }
 
     // Publish event so any active socket or listening client updates immediately
@@ -948,6 +1105,25 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           }
         : { documentId: id, userId: target.id },
     );
+    if (!result.wasMember) {
+      await createNotification({
+        userId: target.id,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_member_added",
+        title: `${request.user.name} added you to a document`,
+        message: `You now have ${body.role} access to "${document.title}".`,
+      });
+    } else if (result.roleChanged) {
+      await createNotification({
+        userId: target.id,
+        actorId: request.user.id,
+        documentId: id,
+        type: "document_role_changed",
+        title: `${request.user.name} changed your role`,
+        message: `Your role in "${document.title}" is now ${body.role}.`,
+      });
+    }
 
     return reply.code(201).send({
       userId: target.id,
@@ -990,6 +1166,9 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         code: "OWNER_ROLE_IMMUTABLE",
       });
     }
+    if (targetRole === body.role) {
+      return reply.send({ userId, role: targetRole });
+    }
 
     const [updated] = await db
       .update(documentMembers)
@@ -1007,11 +1186,30 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .send({ error: "Document member not found", code: "MEMBER_NOT_FOUND" });
     }
 
+    const [document] = await db
+      .select({ title: documents.title })
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    if (!document) {
+      return reply
+        .code(404)
+        .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
+    }
+
     await publishAccessChanged({
       documentId: id,
       userId,
       reason: "role-changed",
       role: body.role,
+    });
+    await createNotification({
+      userId,
+      actorId: request.user.id,
+      documentId: id,
+      type: "document_role_changed",
+      title: `${request.user.name} changed your role`,
+      message: `Your role in "${document.title}" is now ${body.role}.`,
     });
 
     return reply.send({ userId, role: body.role });
@@ -1043,6 +1241,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         });
     }
 
+    const [document] = await db
+      .select({ title: documents.title })
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    if (!document) {
+      return reply
+        .code(404)
+        .send({ error: "Document not found", code: "DOCUMENT_NOT_FOUND" });
+    }
+
     const [deleted] = await db
       .delete(documentMembers)
       .where(
@@ -1062,6 +1271,14 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       documentId: id,
       userId,
       reason: "member-removed",
+    });
+    await createNotification({
+      userId,
+      actorId: request.user.id,
+      documentId: id,
+      type: "document_member_removed",
+      title: `${request.user.name} removed your access`,
+      message: `Your access to "${document.title}" was removed.`,
     });
     return reply.code(204).send();
   });

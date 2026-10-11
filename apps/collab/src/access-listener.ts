@@ -2,8 +2,11 @@ import { Redis } from "ioredis";
 import type { Hocuspocus } from "@hocuspocus/server";
 import {
   ACCESS_CHANNEL,
+  NOTIFICATION_CHANNEL,
+  USER_EVENTS_ROOM_PREFIX,
   accessChangedEventSchema,
   canEdit,
+  notificationPublishedEventSchema,
 } from "@synodos/shared";
 
 const RESET_CONNECTION = { code: 4205, reason: "Reset Connection" };
@@ -17,10 +20,28 @@ export function listenForAccessChanges(
     console.error("[redis] subscriber error:", err.message),
   );
   sub
-    .subscribe(ACCESS_CHANNEL)
+    .subscribe(ACCESS_CHANNEL, NOTIFICATION_CHANNEL)
     .catch((err) => console.error("[redis] subscribe failed:", err));
 
-  sub.on("message", (_channel, raw) => {
+  sub.on("message", (channel, raw) => {
+    if (channel === NOTIFICATION_CHANNEL) {
+      const event = notificationPublishedEventSchema.safeParse(safeJson(raw));
+      if (!event.success) {
+        console.warn("[notifications] ignoring malformed event");
+        return;
+      }
+      hocuspocus.documents
+        .get(`${USER_EVENTS_ROOM_PREFIX}${event.data.userId}`)
+        ?.broadcastStateless(
+          JSON.stringify({
+            type: "notification-created",
+            notificationId: event.data.notificationId,
+          }),
+        );
+      return;
+    }
+    if (channel !== ACCESS_CHANNEL) return;
+
     const parsed = accessChangedEventSchema.safeParse(safeJson(raw));
     if (!parsed.success) {
       console.warn("[access] ignoring malformed event");
@@ -28,8 +49,13 @@ export function listenForAccessChanges(
     }
     const { documentId, userId, reason, role } = parsed.data;
 
-    // document deleted: close everyone on it.
+    // Document deletion is an access change for every connected member.
     if (userId === null) {
+      hocuspocus.documents
+        .get(documentId)
+        ?.broadcastStateless(
+          JSON.stringify({ type: "document-deleted", documentId }),
+        );
       hocuspocus.closeConnections(documentId);
       return;
     }

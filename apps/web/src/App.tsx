@@ -5,6 +5,7 @@ import { LoginPage, SignupPage } from "@/pages/auth";
 import { EditorPage } from "@/pages/editor";
 import OverviewPage from "@/pages/overview";
 import ProfilePage from "@/pages/profile";
+import SettingsPage from "@/pages/settings";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />
           <Route path="/dashboard/overview" element={<OverviewPage />} />
           <Route path="/dashboard/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
         {/* the editor gets its own full-screen layout later */}
         <Route path="/docs/:id" element={<EditorPage />} />

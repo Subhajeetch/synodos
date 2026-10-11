@@ -16,6 +16,7 @@ function useBreadcrumb() {
   const path = location.pathname;
   if (path.startsWith("/dashboard/overview")) return "Overview";
   if (path.startsWith("/dashboard/profile")) return "Profile";
+  if (path.startsWith("/settings")) return "Settings";
   return "Dashboard";
 }
 

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { Search } from "lucide-react";
 import { DocumentGrid } from "@/components/documents/document-grid";
+import { DashboardCollaboration } from "@/components/documents/dashboard-collaboration";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
@@ -74,16 +75,18 @@ export default function OverviewPage() {
             </Button>
           </div>
         ) : (
-          <DocumentGrid
-            docs={activeDocs}
-            isPending={isPending}
-            emptyTitle={isShared ? "Nothing shared with you" : "No documents yet"}
-            emptyHint={
-              isShared
-                ? "Documents other people invite you to will appear here."
-                : "Create your first document to start writing."
-            }
-          />
+          <DashboardCollaboration>
+            <DocumentGrid
+              docs={activeDocs}
+              isPending={isPending}
+              emptyTitle={isShared ? "Nothing shared with you" : "No documents yet"}
+              emptyHint={
+                isShared
+                  ? "Documents other people invite you to will appear here."
+                  : "Create your first document to start writing."
+              }
+            />
+          </DashboardCollaboration>
         )}
       </div>
     </div>

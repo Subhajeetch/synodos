@@ -37,6 +37,8 @@ export function useDocuments() {
   return useQuery({
     queryKey: documentKeys.list(),
     queryFn: () => api<DocumentSummary[]>("/api/documents"),
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -168,7 +170,7 @@ export function useAcceptDocumentInvitation(docId: string) {
         status: "accepted" | "already-member";
         member: DocumentMember;
       }>(`/api/documents/${docId}/invitations/accept`, { method: "POST" }),
-    onSuccess: ({ status, member }) => {
+    onSuccess: async ({ status, member }) => {
       if (status === "accepted") {
         notifyPerson(
           member,
@@ -178,13 +180,23 @@ export function useAcceptDocumentInvitation(docId: string) {
           docId,
         );
       }
-      void queryClient.invalidateQueries({
-        queryKey: documentKeys.detail(docId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: documentKeys.access(docId),
-      });
-      invalidateSharing(queryClient, docId);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.detail(docId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.access(docId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.list(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.sharing(docId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: documentKeys.members(docId),
+        }),
+      ]);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

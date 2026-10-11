@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CreateDocumentButton } from "@/components/documents/create-document-button";
 import {
@@ -23,6 +24,7 @@ import { authClient } from "@/lib/auth-client";
 import { clearOfflineData } from "@/lib/offline";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "./user-avatar";
+import { NotificationsDialog } from "./notifications-dialog";
 
 const docsLinks = [
   { label: "My documents", href: "/dashboard/overview", icon: FileText },
@@ -31,8 +33,7 @@ const docsLinks = [
 
 const workspaceLinks = [
   { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Notifications", href: "/dashboard/profile#notifications", icon: Bell },
-  { label: "Settings", href: "/dashboard/profile#settings", icon: Settings },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 function useActiveHref() {
@@ -89,6 +90,7 @@ export function AppSidebar({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { data: session } = authClient.useSession();
   const user = session?.user;
 
@@ -106,6 +108,10 @@ export function AppSidebar({
         className,
       )}
     >
+      <NotificationsDialog
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+      />
       <div className="flex h-16 shrink-0 items-center gap-3 px-6 pt-2">
         <Link
           to="/dashboard/overview"
@@ -158,6 +164,14 @@ export function AppSidebar({
             {workspaceLinks.map((item) => (
               <SidebarLink key={item.href} {...item} onNavigate={onNavigate} />
             ))}
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen(true)}
+              className="group relative flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Bell className="size-4 shrink-0 text-muted-foreground transition-colors duration-200 group-hover:text-sidebar-accent-foreground" />
+              <span className="truncate">Notifications</span>
+            </button>
           </div>
         </section>
       </nav>
@@ -186,18 +200,6 @@ export function AppSidebar({
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/dashboard/profile")} className="cursor-pointer">
-              <User className="mr-2 size-4" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigate("/dashboard/profile#notifications")}
-              className="cursor-pointer"
-            >
-              <Bell className="mr-2 size-4" /> Notifications
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/dashboard/profile#settings")} className="cursor-pointer">
-              <Settings className="mr-2 size-4" /> Settings
-            </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer">
               <LifeBuoy className="mr-2 size-4" /> Help and feedback
             </DropdownMenuItem>

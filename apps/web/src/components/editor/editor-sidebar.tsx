@@ -597,7 +597,7 @@ export function EditorSidebar({
             )}
           </section>
 
-          <section className="mt-auto space-y-3 rounded-xl bg-muted/30 p-3">
+          <section className="mt-auto space-y-3 rounded-xl bg-card/50 md:bg-muted/20 p-3 mb-14 sm:mb-0 ">
             <div className="flex items-center gap-2">
               <Settings2 className="size-3.5 text-muted-foreground" />
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

@@ -5,6 +5,7 @@ import { auth } from "./auth";
 import { env } from "./env";
 import { z } from "zod";
 import { documentRoutes } from "./routes/documents";
+import { notificationRoutes } from "./routes/notifications";
 import { userRoutes } from "./routes/users";
 
 const app = Fastify({ logger: true });
@@ -33,6 +34,7 @@ app.setErrorHandler((err, request, reply) => {
 });
 
 await app.register(documentRoutes, { prefix: "/api" });
+await app.register(notificationRoutes, { prefix: "/api" });
 await app.register(userRoutes, { prefix: "/api" });
 
 

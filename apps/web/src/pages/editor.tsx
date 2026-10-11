@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
   HocuspocusProviderWebsocket,
   WebSocketStatus,
@@ -94,12 +93,10 @@ function PersistentCollaborationConnection({
 
 export function EditorPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: doc, isPending, error, refetch } = useDocument(id);
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const documentMissing = error instanceof ApiError && error.status === 404;
-  const previouslyHadAccess = useRef(false);
   const access = useDocumentAccessStatus(id, documentMissing);
   const previousAccessStatus = useRef(access.data?.status);
   const requestAccess = useRequestDocumentAccess(id ?? "", {
@@ -108,19 +105,6 @@ export function EditorPage() {
     image: session?.user.image ?? null,
   });
   const acceptInvitation = useAcceptDocumentInvitation(id ?? "");
-
-  useEffect(() => {
-    if (doc) previouslyHadAccess.current = true;
-  }, [doc]);
-
-  useEffect(() => {
-    if (!documentMissing || !previouslyHadAccess.current) return;
-    toast.warning("You have been removed", {
-      id: `document-access-removed-${id}`,
-      description: "You have been removed from this document room.",
-    });
-    navigate("/dashboard/overview", { replace: true });
-  }, [documentMissing, id, navigate]);
 
   useEffect(() => {
     if (
@@ -189,7 +173,13 @@ export function EditorPage() {
               document.
             </p>
             <Button
-              onClick={() => acceptInvitation.mutate()}
+              onClick={() =>
+                acceptInvitation.mutate(undefined, {
+                  onSuccess: () => {
+                    void refetch();
+                  },
+                })
+              }
               disabled={acceptInvitation.isPending}
             >
               {acceptInvitation.isPending ? (

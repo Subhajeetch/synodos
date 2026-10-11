@@ -49,6 +49,7 @@ import {
   canEdit,
   canManageMembers,
   MAX_DOCUMENT_MEMBERS,
+  documentDeletedMessageSchema,
   memberRemovedMessageSchema,
   memberRoleChangedMessageSchema,
   type DocumentMember,
@@ -807,6 +808,21 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     try {
       message = JSON.parse(payload);
     } catch {
+      return;
+    }
+    const documentDeleted = documentDeletedMessageSchema.safeParse(message);
+    if (
+      documentDeleted.success &&
+      documentDeleted.data.documentId === doc.id
+    ) {
+      toast.warning("Document deleted", {
+        id: `document-deleted-${doc.id}`,
+        description: "This document was deleted by its owner.",
+      });
+      void clear().catch((error) => {
+        console.error("Could not clear the deleted offline document:", error);
+      });
+      navigate("/dashboard/overview", { replace: true });
       return;
     }
     const parsed = memberRemovedMessageSchema.safeParse(message);
