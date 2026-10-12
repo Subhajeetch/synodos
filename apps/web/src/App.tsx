@@ -6,6 +6,7 @@ import { EditorPage } from "@/pages/editor";
 import OverviewPage from "@/pages/overview";
 import ProfilePage from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
+import LandingPage from "@/pages/landing"
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <Route element={<PublicOnly />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/" element={<LandingPage />} />
       </Route>
 
       <Route element={<RequireAuth />}>

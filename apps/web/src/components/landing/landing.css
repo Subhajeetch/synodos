@@ -1,0 +1,243 @@
+/*
+ * Landing page styles. Everything is scoped under .landing-root so tokens,
+ * fonts and helpers never leak into the editor or other pages.
+ *
+ * Layout and spacing live in Tailwind utilities. This file only holds tokens,
+ * typography, keyframes and a few helpers that are awkward as utilities.
+ * This CSS is unlayered, so it beats Tailwind utilities: never set a property
+ * here that a utility is also expected to set on the same element.
+ */
+
+.landing-root {
+    --lp-bg: #F8F8F8;
+    --lp-surface: #FFFFFF;
+    --lp-fg: #0A0A0B;
+    --lp-muted: #6E6E78;
+    --lp-subtle: #A1A1AA;
+    --lp-border: rgba(10, 10, 11, 0.08);
+    --lp-accent: #3D2AF0;
+    --lp-dark: #0A0A0B;
+    --lp-dark-muted: #8E8E98;
+    --lp-corner: clamp(40px, 8vw, 120px);
+    --lp-font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --lp-font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--lp-bg);
+    color: var(--lp-fg);
+    font-family: var(--lp-font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Typography ---------- */
+
+.landing-root .lp-display {
+    font-family: var(--lp-font-serif);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+}
+
+.landing-root .lp-h1 {
+    font-size: clamp(2.75rem, 9.5vw, 7rem);
+    line-height: 0.98;
+}
+
+.landing-root .lp-h2 {
+    font-size: clamp(2rem, 5vw, 4rem);
+    line-height: 1.04;
+}
+
+.landing-root .lp-sans {
+    font-family: var(--lp-font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+    letter-spacing: normal;
+}
+
+/* Colour only: never combine with a text-colour utility or hover colour. */
+.landing-root .lp-muted {
+    color: var(--lp-muted);
+}
+
+/* ---------- Highlighted word pill ---------- */
+
+.landing-root .lp-highlight {
+    display: inline-block;
+    padding: 0.02em 0.18em 0.08em;
+    border-radius: 0.18em;
+    background: var(--lp-accent);
+    color: #fff;
+    line-height: 1.05;
+}
+
+.landing-root .lp-highlight--dark {
+    background: var(--lp-dark);
+}
+
+/* ---------- Collaboration cursor ---------- */
+
+.landing-root .lp-cursor {
+    --lp-av: 28px;
+    --lp-cd: color-mix(in srgb, var(--lp-c) 66%, #000);
+    width: 2px;
+    height: 1.08em;
+    border-radius: 2px;
+    background: var(--lp-c);
+    font-family: var(--lp-font-sans);
+}
+
+.landing-root .lp-cursor__avatar {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    display: grid;
+    place-items: center;
+    width: var(--lp-av);
+    height: var(--lp-av);
+    transform: translate(-50%, -58%);
+    border-radius: 9999px;
+    background: var(--lp-cd);
+    color: #fff;
+    font-size: calc(var(--lp-av) * 0.42);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow: 0 0 0 2px #fff, 0 6px 16px -4px rgba(10, 10, 11, 0.35);
+}
+
+.landing-root .lp-cursor__tag {
+    display: none;
+    position: absolute;
+    top: calc(var(--lp-av) * -0.08 - 11px);
+    left: calc(var(--lp-av) * 0.5 + 8px);
+    padding: 3px 8px;
+    border-radius: 6px 6px 6px 2px;
+    background: var(--lp-cd);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .landing-root .lp-cursor {
+        --lp-av: 44px;
+    }
+
+    .landing-root .lp-cursor__tag {
+        display: block;
+    }
+}
+
+/* ---------- Helpers ---------- */
+
+.landing-root .lp-no-scrollbar {
+    scrollbar-width: none;
+}
+
+.landing-root .lp-no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.landing-root .lp-fade-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent);
+    mask-image: linear-gradient(to bottom, #000 65%, transparent);
+}
+
+/* ---------- Focus ---------- */
+
+.landing-root :focus-visible {
+    outline: 2px solid var(--lp-accent);
+    outline-offset: 2px;
+}
+
+.landing-root .lp-on-dark :focus-visible,
+.landing-root .lp-on-dark:focus-visible {
+    outline-color: #fff;
+}
+
+/* ---------- Keyframes (all prefixed lp-) ---------- */
+
+@keyframes lp-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes lp-marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes lp-progress {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
+    }
+}
+
+@keyframes lp-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ---------- Motion: only when the visitor has not asked for less ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .landing-root .lp-reveal {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 500ms ease, transform 500ms ease;
+        transition-delay: var(--lp-reveal-delay, 0ms);
+    }
+
+    .landing-root .lp-reveal.is-in {
+        opacity: 1;
+        transform: none;
+    }
+
+    .landing-root .lp-cursor {
+        animation: lp-float var(--lp-dur, 7s) ease-in-out var(--lp-delay, 0s) infinite;
+    }
+
+    .landing-root .lp-marquee {
+        animation: lp-marquee var(--lp-dur, 48s) linear infinite;
+    }
+
+    .landing-root .lp-marquee--rev {
+        animation-direction: reverse;
+    }
+
+    .landing-root .lp-progress {
+        animation: lp-progress var(--lp-progress-dur, 6s) linear forwards;
+    }
+
+    .landing-root .lp-fade {
+        animation: lp-fade-in 150ms ease-out;
+    }
+}
