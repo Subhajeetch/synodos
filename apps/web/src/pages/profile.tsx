@@ -1,7 +1,29 @@
-import { Bell, Mail, Shield, UserRound } from "lucide-react";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import {
+  Bell,
+  LoaderCircle,
+  Mail,
+  Pencil,
+  Shield,
+  UserRound,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 
 function getInitials(name?: string | null, email?: string | null) {
   const source = name?.trim() || email?.trim() || "?";
@@ -11,9 +33,17 @@ function getInitials(name?: string | null, email?: string | null) {
     : source.slice(0, 2).toUpperCase();
 }
 
+function hasControlCharacters(value: string) {
+  return Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
+
 export default function ProfilePage() {
-  const { data: session } = authClient.useSession();
+  const { data: session, refetch } = authClient.useSession();
   const user = session?.user;
+  const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -57,12 +87,25 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
-            <div className="group flex flex-col gap-1.5 rounded-lg border border-transparent p-2 transition-colors hover:bg-muted/50">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Display name
+            <button
+              type="button"
+              onClick={() => setIsNameDialogOpen(true)}
+              aria-label="Edit display name"
+              className="group flex w-full items-center justify-between gap-3 rounded-lg border border-transparent p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex min-w-0 flex-col gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Display name
+                </span>
+                <span className="truncate text-sm font-medium text-foreground">
+                  {user?.name ?? "Not set"}
+                </span>
               </span>
-              <span className="text-sm font-medium text-foreground">{user?.name ?? "Not set"}</span>
-            </div>
+              <Pencil
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+            </button>
             <div className="group flex flex-col gap-1.5 rounded-lg border border-transparent p-2 transition-colors hover:bg-muted/50">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Email Address
@@ -100,6 +143,124 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+      {isNameDialogOpen && (
+        <EditDisplayNameDialog
+          currentName={user?.name ?? ""}
+          onOpenChange={setIsNameDialogOpen}
+          refreshSession={() => void refetch()}
+        />
+      )}
     </div>
+  );
+}
+
+function EditDisplayNameDialog({
+  currentName,
+  onOpenChange,
+  refreshSession,
+}: {
+  currentName: string;
+  onOpenChange: (open: boolean) => void;
+  refreshSession: () => void;
+}) {
+  const [name, setName] = useState(currentName);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const hasChanges = name.trim() !== currentName.trim();
+  const updateName = useMutation({
+    mutationFn: (updatedName: string) =>
+      api<{ name: string }>("/api/users/me", {
+        method: "PATCH",
+        json: { name: updatedName },
+      }),
+    onSuccess: () => {
+      toast.success("Display name updated");
+      refreshSession();
+      onOpenChange(false);
+    },
+  });
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length > 80) {
+      setValidationError("Display name must be between 1 and 80 characters.");
+      return;
+    }
+    if (hasControlCharacters(trimmedName)) {
+      setValidationError("Display name cannot contain control characters.");
+      return;
+    }
+    setValidationError(null);
+    updateName.mutate(trimmedName);
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!updateName.isPending) onOpenChange(open);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={handleSubmit} className="grid gap-4">
+          <DialogHeader>
+            <DialogTitle>Edit display name</DialogTitle>
+            <DialogDescription>
+              This name will be shown across your account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-2">
+            <Label htmlFor="profile-display-name">Display name</Label>
+            <Input
+              id="profile-display-name"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setValidationError(null);
+              }}
+              maxLength={80}
+              autoComplete="name"
+              autoFocus
+              aria-invalid={Boolean(validationError || updateName.error)}
+              aria-describedby={
+                validationError || updateName.error
+                  ? "profile-display-name-error"
+                  : undefined
+              }
+            />
+            {(validationError || updateName.error) && (
+              <p
+                id="profile-display-name-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
+                {validationError ?? updateName.error?.message}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={updateName.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!hasChanges || updateName.isPending}
+            >
+              {updateName.isPending && (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              )}
+              {updateName.isPending ? "Updating…" : "Update"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
