@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "check-types": "tsc",
     "test": "tsx --test src/version-state.test.ts",
@@ -20,6 +20,7 @@
     "@synodos/shared": "workspace:*",
     "ioredis": "^6.0.0",
     "jose": "^6.2.12",
+    "tsx": "^4.23.15",
     "yjs": "^13.6.33",
     "zod": "^4.6.5"
   },
@@ -27,7 +28,6 @@
     "@hocuspocus/provider": "^4.7.0",
     "@synodos/typescript-config": "workspace:*",
     "@types/node": "^26.6.4",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }

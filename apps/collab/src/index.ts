@@ -28,9 +28,12 @@ const env = z
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().min(1),
     BETTER_AUTH_URL: z.url(),
-    COLLAB_PORT: z.coerce.number().default(1234),
+    PORT: z.coerce.number().optional(),
+    COLLAB_PORT: z.coerce.number().optional(),
   })
   .parse(process.env);
+
+const port = env.COLLAB_PORT ?? env.PORT ?? 1234;
 
 const { db } = createDb(env.DATABASE_URL);
 const versionRedis = new RedisClient(env.REDIS_URL, { maxRetriesPerRequest: 2 });
@@ -198,8 +201,8 @@ async function withDocumentVersionLock(
 }
 
 const server = new Server({
-  name: `synodos-collab-${env.COLLAB_PORT}`,
-  port: env.COLLAB_PORT,
+  name: `synodos-collab-${port}`,
+  port,
   timeout: 120_000, // Allow background tabs more time before expiring a quiet socket.
   debounce: 2_000, // store 2s after the last change...
   maxDebounce: 10_000, // ...but never wait longer than 10s during continuous typing
