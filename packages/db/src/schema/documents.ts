@@ -1,5 +1,7 @@
 import {
   index,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -13,6 +15,12 @@ import { bytea } from "./columns";
 import { user } from "./auth";
 
 export const documentRole = pgEnum("document_role", DOCUMENT_ROLES);
+export const documentVersionKind = pgEnum("document_version_kind", [
+  "auto",
+  "named",
+  "restore",
+  "pre_restore",
+]);
 
 export const documents = pgTable(
   "documents",
@@ -122,6 +130,12 @@ export const documentVersions = pgTable(
       .references(() => documents.id, { onDelete: "cascade" }),
     state: bytea("state").notNull(),
     label: text("label"),
+    kind: documentVersionKind("kind").notNull().default("auto"),
+    contentHash: text("content_hash").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    restoredFromVersionId: uuid("restored_from_version_id"),
+    operationId: uuid("operation_id"),
+    contributors: jsonb("contributors").$type<string[]>().notNull().default([]),
     createdBy: text("created_by").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -129,5 +143,19 @@ export const documentVersions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("document_versions_doc_idx").on(t.documentId, t.createdAt)],
+  (t) => [
+    index("document_versions_doc_idx").on(t.documentId, t.createdAt),
+    index("document_versions_cursor_idx").on(
+      t.documentId,
+      t.createdAt.desc(),
+      t.id.desc(),
+    ),
+    index("document_versions_hash_idx").on(
+      t.documentId,
+      t.contentHash,
+      t.createdAt.desc(),
+    ),
+    index("document_versions_restored_from_idx").on(t.restoredFromVersionId),
+    unique("document_versions_operation_id_unique").on(t.operationId),
+  ],
 );

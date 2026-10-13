@@ -287,7 +287,7 @@ export const FEATURES: {
       label: "History",
       icon: History,
       caption:
-        "Browse earlier versions and restore any moment of the document in a click.",
+        "Browse saved versions and restore an earlier snapshot when needed.",
     },
   ],
 };
@@ -317,8 +317,8 @@ export const TEAM = {
     },
     {
       icon: MessageSquare,
-      text: "See version history and restore any moment of the document in a click.",
-      alt: "A page showing version history with a list of previous versions and a restore button.",
+      text: "Browse saved versions and restore an earlier snapshot from the editor.",
+      alt: "A page showing saved document versions and a restore action.",
     },
     {
       icon: Users,

@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "check-types": "tsc",
+    "test": "tsx --test src/version-state.test.ts",
     "smoke": "tsx --env-file=../../.env scripts/smoke.ts"
   },
   "dependencies": {

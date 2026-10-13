@@ -7,6 +7,7 @@ import { z } from "zod";
 import { documentRoutes } from "./routes/documents";
 import { notificationRoutes } from "./routes/notifications";
 import { userRoutes } from "./routes/users";
+import { versionRoutes } from "./routes/versions";
 
 const app = Fastify({ logger: true });
 
@@ -36,6 +37,7 @@ app.setErrorHandler((err, request, reply) => {
 await app.register(documentRoutes, { prefix: "/api" });
 await app.register(notificationRoutes, { prefix: "/api" });
 await app.register(userRoutes, { prefix: "/api" });
+await app.register(versionRoutes, { prefix: "/api" });
 
 
 app.get("/health", async () => ({ status: "ok" }));
