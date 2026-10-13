@@ -32,6 +32,11 @@ export const documentDeletedMessageSchema = z.object({
   documentId: z.uuid(),
 });
 
+export const documentRestoredMessageSchema = z.object({
+  type: z.literal("document-restored"),
+  actorName: z.string().min(1),
+});
+
 export const notificationCreatedMessageSchema = z.object({
   type: z.literal("notification-created"),
   notificationId: z.uuid(),

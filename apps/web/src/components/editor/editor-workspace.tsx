@@ -9,9 +9,10 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft,
+  Clock3,
   ChevronDown,
   ChevronUp,
   Ellipsis,
@@ -24,28 +25,18 @@ import {
   Users,
 } from "lucide-react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
-import { StarterKit } from "@tiptap/starter-kit";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { TextStyleKit } from "@tiptap/extension-text-style";
-import { Highlight } from "@tiptap/extension-highlight";
-import { TextAlign } from "@tiptap/extension-text-align";
-import { Subscript } from "@tiptap/extension-subscript";
-import { Superscript } from "@tiptap/extension-superscript";
-import { TaskItem, TaskList } from "@tiptap/extension-list";
-import { Table, TableHeader, TableRow } from "@tiptap/extension-table";
-import { Typography } from "@tiptap/extension-typography";
-import { Image } from "@tiptap/extension-image";
-import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
+import { isChangeOrigin } from "@tiptap/extension-collaboration";
 import { yUndoPluginKey } from "@tiptap/y-tiptap";
-import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { WebSocketStatus } from "@hocuspocus/provider";
 import {
   useHocuspocusEvent,
   useHocuspocusProvider,
 } from "@hocuspocus/provider-react";
 import {
+  documentRestoredMessageSchema,
   canEdit,
   canManageMembers,
   MAX_DOCUMENT_MEMBERS,
@@ -55,6 +46,7 @@ import {
   type DocumentMember,
   type DocumentSummary,
 } from "@synodos/shared";
+import type { DocumentVersionSummary } from "@synodos/shared";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +70,11 @@ import { useOfflinePersistence } from "@/hooks/use-offline-persistence";
 import { usePresence } from "@/hooks/use-presence";
 import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
 import {
+  useDocumentVersion,
+  useDocumentVersions,
+  useRestoreDocumentVersion,
+} from "@/hooks/use-document-versions";
+import {
   clampZoom,
   getZoom,
   logSliderToZoom,
@@ -86,6 +83,9 @@ import {
   zoomToLogSlider,
 } from "@/lib/zoom/zoom-store";
 import { authClient } from "@/lib/auth-client";
+import { ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { decodeVersionState } from "@/lib/version-snapshot";
 import { userColor } from "@/lib/colors";
 import { scheduleSoundPreload } from "@/lib/audio/sound-engine";
 import {
@@ -99,23 +99,28 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConnectionStatus } from "./connection-status";
 import {
-  renderCollaborationCursor,
   showActiveCollaborationCursors,
 } from "./collaboration-cursor";
 import "./collaboration-cursor.css";
 import "./editor-document.css";
 import { EditorSidebar } from "./editor-sidebar";
-import { StyledTableCell } from "./table-cell";
 import { EditorToolbar } from "./editor-toolbar";
 import { AddPageButton } from "./page-controls";
-import { Page } from "./page";
 import { getPageRanges } from "./page-actions";
 import { InviteMemberDialog } from "./invite-member-dialog";
 import { PresenceAvatars } from "./presence";
 import { SyncErrorBanner } from "./sync-error-banner";
 import { TitleInput } from "./title-input";
+import { createEditorExtensions } from "./editor-extensions";
+import { VersionPreviewPanel } from "./version-preview-panel";
+import type { Doc } from "yjs";
 
 import { useQueryClient } from "@tanstack/react-query";
+
+type VersionWithPosition = DocumentVersionSummary & {
+  position: number;
+  total: number;
+};
 
 function getPageSummaries(doc: ProseMirrorNode) {
   return getPageRanges(doc).map((page) => ({
@@ -126,6 +131,20 @@ function getPageSummaries(doc: ProseMirrorNode) {
         .slice(page.from, page.to)
         .content.textBetween(0, page.to - page.from, " "),
   }));
+}
+
+function getCharacterMetrics(editor: Editor) {
+  const characterCount = editor.storage.characterCount;
+  const text = editor.state.doc.textContent;
+  const words =
+    typeof characterCount?.words === "function"
+      ? characterCount.words()
+      : text.trim().split(/\s+/).filter(Boolean).length;
+  const characters =
+    typeof characterCount?.characters === "function"
+      ? characterCount.characters()
+      : text.length;
+  return { wordCount: words, characterCount: characters };
 }
 
 function persistZoom(
@@ -211,8 +230,7 @@ function EditorPagesFooter({
         doc: thumbnailsOpen ? currentEditor.state.doc : null,
         currentPage: currentRangeIndex + 1,
         pageCount: ranges.length,
-        wordCount: currentEditor.storage.characterCount.words(),
-        characterCount: currentEditor.storage.characterCount.characters(),
+        ...getCharacterMetrics(currentEditor),
       };
     },
     equalityFn: (a, b) =>
@@ -601,7 +619,7 @@ class EditorWorkspaceErrorBoundary extends Component<
   { children: ReactNode },
   { error: Error | null }
 > {
-  state = { error: null };
+  state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) {
     return { error };
@@ -620,6 +638,11 @@ class EditorWorkspaceErrorBoundary extends Component<
             <p className="text-sm text-muted-foreground">
               Your changes are safe in the collaboration server or the local copy.
             </p>
+            {new URLSearchParams(window.location.search).has("version") && (
+              <p className="break-words font-mono text-xs text-muted-foreground">
+                {this.state.error.message}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -636,6 +659,82 @@ class EditorWorkspaceErrorBoundary extends Component<
   }
 }
 
+class VersionPreviewErrorBoundary extends Component<
+  { children: ReactNode; onReturnToLive: () => void },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Version preview render failure:", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          role="alert"
+          className="mx-auto mt-8 max-w-lg rounded-lg border border-destructive/30 bg-background p-4 text-sm shadow"
+        >
+          <p className="font-medium">This saved version couldn’t be rendered.</p>
+          <p className="mt-1 text-muted-foreground">
+            The current document is still available and has not been changed.
+          </p>
+          <p className="mt-2 break-words font-mono text-xs text-muted-foreground">
+            {this.state.error.message}
+          </p>
+          <Button
+            className="mt-3"
+            size="sm"
+            onClick={this.props.onReturnToLive}
+          >
+            Return to current document
+          </Button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function VersionPreviewEditor({
+  document,
+  versionId,
+  onEditorChange,
+}: {
+  document: Doc;
+  versionId: string;
+  onEditorChange: (versionId: string, editor: Editor | null) => void;
+}) {
+  const editor = useEditor(
+    {
+      editable: false,
+      extensions: createEditorExtensions({ document }),
+      editorProps: {
+        attributes: {
+          class:
+            "prose prose-neutral max-w-none text-neutral-950 focus:outline-none " +
+            "prose-headings:text-neutral-950 prose-p:text-neutral-800 prose-strong:text-neutral-950 " +
+            "prose-code:text-neutral-950 prose-code:before:content-none prose-code:after:content-none",
+        },
+      },
+    },
+    [document],
+  );
+
+  useEffect(() => {
+    onEditorChange(versionId, editor);
+    return () => onEditorChange(versionId, null);
+  }, [editor, onEditorChange, versionId]);
+
+  return editor ? <EditorContent editor={editor} /> : null;
+}
+
 export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   return (
     <EditorWorkspaceErrorBoundary>
@@ -646,9 +745,165 @@ export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
 
 function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const provider = useHocuspocusProvider();
+  const selectedVersionId = searchParams.get("version");
+  const versionQuery = useDocumentVersion(doc.id, selectedVersionId);
+  const versionsQuery = useDocumentVersions(doc.id);
+  const restoreVersion = useRestoreDocumentVersion(doc.id);
+  const previewSnapshot = useMemo(() => {
+    if (!versionQuery.data) return null;
+    try {
+      const document = decodeVersionState(versionQuery.data.state);
+      return { document, error: null };
+    } catch (error) {
+      return {
+        document: null,
+        error:
+          error instanceof Error
+            ? error
+            : new Error("The saved version could not be decoded"),
+      };
+    }
+  }, [versionQuery.data]);
+  const previewDocument = previewSnapshot?.document ?? null;
+  const [previewEditor, setPreviewEditor] = useState<{
+    versionId: string;
+    editor: Editor;
+  } | null>(null);
+  const [versionNavigation, setVersionNavigation] = useState<{
+    direction: "older" | "newer";
+    targetVersionId: string | null;
+  } | null>(null);
+  const handlePreviewEditorChange = useCallback(
+    (versionId: string, nextEditor: Editor | null) => {
+      setPreviewEditor((current) => {
+        if (nextEditor) return { versionId, editor: nextEditor };
+        return current?.versionId === versionId ? null : current;
+      });
+    },
+    [],
+  );
+  const loadedVersions = useMemo(
+    () => versionsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [versionsQuery.data],
+  );
+  const restoreOperation = useRef<{
+    versionId: string;
+    operationId: string;
+  } | null>(null);
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
+
+  const selectVersion = useCallback(
+    (versionId: string | null) => {
+      const nextParams = new URLSearchParams(searchParams);
+      if (versionId) nextParams.set("version", versionId);
+      else nextParams.delete("version");
+      setSearchParams(nextParams, { replace: versionId === null });
+    },
+    [searchParams, setSearchParams],
+  );
+  const navigateVersion = useCallback(
+    async (direction: "older" | "newer") => {
+      if (!selectedVersionId) return;
+      setVersionNavigation({ direction, targetVersionId: null });
+      const index = loadedVersions.findIndex(
+        (version) => version.id === selectedVersionId,
+      );
+      const cached = loadedVersions[index + (direction === "older" ? 1 : -1)];
+      if (cached) {
+        setVersionNavigation({
+          direction,
+          targetVersionId: cached.id,
+        });
+        selectVersion(cached.id);
+        return;
+      }
+      try {
+        const response = await api<{
+          version: VersionWithPosition | null;
+        }>(
+          `/api/documents/${doc.id}/versions/${selectedVersionId}/neighbor?direction=${direction}`,
+        );
+        if (response.version) {
+          setVersionNavigation({
+            direction,
+            targetVersionId: response.version.id,
+          });
+          selectVersion(response.version.id);
+        } else {
+          setVersionNavigation(null);
+        }
+      } catch (error) {
+        setVersionNavigation(null);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not navigate version history",
+        );
+      }
+    },
+    [doc.id, loadedVersions, selectVersion, selectedVersionId],
+  );
+
+  useEffect(
+    () => () => {
+      previewDocument?.destroy();
+    },
+    [previewDocument],
+  );
+
+  useEffect(() => {
+    if (
+      selectedVersionId &&
+      versionQuery.isError &&
+      versionQuery.error instanceof ApiError &&
+      versionQuery.error.status === 404
+    ) {
+      selectVersion(null);
+      toast.info("That saved version is no longer available", {
+        description: "You are back in the current document.",
+      });
+    }
+  }, [selectedVersionId, selectVersion, versionQuery.error, versionQuery.isError]);
+
+  useEffect(() => {
+    if (!selectedVersionId) return;
+    function handleHistoryKeydown(event: KeyboardEvent) {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest(
+          'input, textarea, select, [contenteditable="true"], [role="dialog"]',
+        )
+      ) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        selectVersion(null);
+        return;
+      }
+
+      const delta =
+        event.key === "ArrowLeft"
+          ? 1
+          : event.key === "ArrowRight"
+            ? -1
+            : 0;
+      if (!delta || event.altKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      void navigateVersion(delta > 0 ? "older" : "newer");
+    }
+    window.addEventListener("keydown", handleHistoryKeydown);
+    return () => window.removeEventListener("keydown", handleHistoryKeydown);
+  }, [
+    loadedVersions,
+    selectVersion,
+    selectedVersionId,
+    navigateVersion,
+  ]);
 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -746,12 +1001,15 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
   const handleAccessLost = useCallback(() => {
     if (handledLostAccess.current) return;
     handledLostAccess.current = true;
+    queryClient.removeQueries({
+      queryKey: ["document-versions", doc.id],
+    });
     toast.warning("You have been removed", {
       id: `document-access-removed-${doc.id}`,
       description: "You have been removed from this document room.",
     });
     navigate("/dashboard/overview", { replace: true });
-  }, [doc.id, navigate]);
+  }, [doc.id, navigate, queryClient]);
 
   useEffect(() => {
     currentUsersRef.current = users;
@@ -823,6 +1081,19 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
         console.error("Could not clear the deleted offline document:", error);
       });
       navigate("/dashboard/overview", { replace: true });
+      queryClient.removeQueries({
+        queryKey: ["document-versions", doc.id],
+      });
+      return;
+    }
+    const restored = documentRestoredMessageSchema.safeParse(message);
+    if (restored.success) {
+      void queryClient.invalidateQueries({
+        queryKey: ["document-versions", doc.id],
+      });
+      toast.info("This document was restored", {
+        description: `${restored.data.actorName} restored an earlier version. Your current view has not changed.`,
+      });
       return;
     }
     const parsed = memberRemovedMessageSchema.safeParse(message);
@@ -976,6 +1247,14 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     () => () => dismissNotificationScope(doc.id),
     [doc.id],
   );
+  useEffect(
+    () => () => {
+      queryClient.removeQueries({
+        queryKey: ["document-versions", doc.id],
+      });
+    },
+    [doc.id, queryClient],
+  );
 
   async function retrySync() {
     setRetryingSync(true);
@@ -1018,51 +1297,12 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
 
   const editor = useEditor(
     {
-      editable,
-      extensions: [
-        // Yjs handles undo/redo; TipTap's own history would fight it.
-        StarterKit.configure({
-          undoRedo: false,
-          trailingNode: false,
-          heading: { levels: [1, 2, 3, 4] },
-          link: {
-            openOnClick: false,
-            autolink: true,
-            defaultProtocol: "https",
-            isAllowedUri: (url) => {
-              try {
-                return ["http:", "https:", "mailto:"].includes(
-                  new URL(url, "https://synodos.invalid").protocol,
-                );
-              } catch {
-                return false;
-              }
-            },
-          },
-        }),
-        Placeholder.configure({ placeholder: "Start writing…" }),
-        CharacterCount,
-        TextStyleKit,
-        Highlight.configure({ multicolor: true }),
-        TextAlign.configure({ types: ["heading", "paragraph"] }),
-        Subscript,
-        Superscript,
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        Table.configure({ resizable: true }),
-        TableRow,
-        TableHeader,
-        StyledTableCell,
-        Typography,
-        Image.configure({ allowBase64: false }),
-        Page.configure({ titleMap: pageTitleMap }),
-        Collaboration.configure({ document: provider.document }),
-        CollaborationCaret.configure({
-          provider,
-          user,
-          render: renderCollaborationCursor,
-        }),
-      ],
+      editable: editable && !selectedVersionId,
+      extensions: createEditorExtensions({
+        document: provider.document,
+        provider,
+        user,
+      }),
       editorProps: {
         attributes: {
           class:
@@ -1491,9 +1731,43 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     setZoom(clampedZoom);
   }
 
+  function handleRestoreVersion() {
+    if (!selectedVersionId) return;
+    if (restoreOperation.current?.versionId !== selectedVersionId) {
+      restoreOperation.current = {
+        versionId: selectedVersionId,
+        operationId: crypto.randomUUID(),
+      };
+    }
+    restoreVersion.mutate(
+      {
+        versionId: selectedVersionId,
+        operationId: restoreOperation.current.operationId,
+      },
+      {
+        onSuccess: () => {
+          restoreOperation.current = null;
+          toast.success("Version restored for everyone");
+          selectVersion(null);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof ApiError && error.code === "COLLABORATION_UNAVAILABLE"
+              ? "The collaboration service is unavailable. The document was not confirmed as restored."
+              : error instanceof ApiError && error.code === "DOCUMENT_CHANGED"
+                ? "The document changed while restore was starting. Review the live document, then try restoring again."
+                : error instanceof Error
+                  ? error.message
+                  : "The version could not be restored.",
+          );
+        },
+      },
+    );
+  }
+
   useEffect(() => {
-    editor?.setEditable(editable);
-  }, [editor, editable]);
+    editor?.setEditable(editable && !selectedVersionId);
+  }, [editor, editable, selectedVersionId]);
 
   useEffect(() => {
     if (!editor || !provider.awareness) return;
@@ -1535,8 +1809,16 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       </div>
     );
   }
+  const footerEditor =
+    selectedVersionId && previewEditor?.versionId === selectedVersionId
+      ? previewEditor.editor
+      : editor;
 
   return (
+    <VersionPreviewErrorBoundary
+      key={selectedVersionId ?? "live-document"}
+      onReturnToLive={() => selectVersion(null)}
+    >
       <div className="flex h-dvh flex-col bg-background text-foreground">
         <header className="flex h-14 shrink-0 items-center gap-3 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 border-b border-border/40 shadow-sm">
           <Button
@@ -1551,15 +1833,23 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
           </Button>
 
           <div className="flex items-center gap-2">
-            <TitleInput key={doc.title} doc={doc} readOnly={!editable} />
-            {!editable && (
+            <TitleInput
+              key={doc.title}
+              doc={doc}
+              readOnly={!editable || Boolean(selectedVersionId)}
+            />
+            {selectedVersionId ? (
+              <Badge variant="outline" className="font-medium">
+                Past version
+              </Badge>
+            ) : !editable ? (
               <Badge
                 variant="secondary"
                 className="px-2 font-medium bg-secondary/50 text-secondary-foreground/80 hover:bg-secondary/50"
               >
                 View only
               </Badge>
-            )}
+            ) : null}
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -1645,17 +1935,99 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
           />
         )}
 
-        <EditorToolbar editor={editor} disabled={!editable} />
+        <EditorToolbar
+          editor={footerEditor}
+          disabled={!editable || Boolean(selectedVersionId)}
+        />
 
         <div className="flex min-h-0 flex-1 overflow-hidden bg-muted/30 dark:bg-[#111113]">
           <main
             ref={canvasRef}
             className={cn(
-              "editor-canvas flex-1 overflow-y-auto overflow-x-auto",
+              "editor-canvas relative flex-1 overflow-y-auto overflow-x-auto",
               handToolActive && "editor-canvas--hand",
             )}
             style={{ ["--zoom" as string]: String(initialZoom) }}
           >
+            {selectedVersionId && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="sticky top-0 z-30 flex items-center justify-center gap-2 border-b border-primary/30 bg-primary/10 px-4 py-2 text-center text-sm font-medium text-foreground"
+              >
+                <Clock3 className="size-4" aria-hidden="true" />
+                You are viewing a past version, not the live document.
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={() => selectVersion(null)}
+                >
+                  Back to current document
+                </Button>
+              </div>
+            )}
+            {selectedVersionId && versionQuery.isPending && (
+              <div className="absolute inset-x-0 top-16 z-20 flex justify-center">
+                <div role="status" className="rounded-lg border bg-background p-3 text-sm shadow">
+                  <Loader2 className="mr-2 inline size-4 animate-spin" aria-hidden="true" />
+                  Loading saved version…
+                </div>
+              </div>
+            )}
+            {selectedVersionId &&
+              (previewSnapshot?.error || versionQuery.isError) &&
+              !(versionQuery.error instanceof ApiError && versionQuery.error.status === 404) && (
+                <div
+                  role="alert"
+                  className="absolute inset-x-4 top-16 z-20 mx-auto max-w-lg rounded-lg border border-destructive/30 bg-background p-4 text-sm shadow"
+                >
+                  <p className="font-medium">This version could not be previewed.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {previewSnapshot?.error?.message ??
+                      (versionQuery.error instanceof Error
+                        ? versionQuery.error.message
+                        : "Try again or return to the current document.")}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void versionQuery.refetch()}
+                    >
+                      Try again
+                    </Button>
+                    <Button size="sm" onClick={() => selectVersion(null)}>
+                      Return to current document
+                    </Button>
+                  </div>
+                </div>
+              )}
+            {selectedVersionId && versionQuery.data && !previewSnapshot?.error && (
+              <VersionPreviewPanel
+                version={versionQuery.data}
+                role={doc.role}
+                position={versionQuery.data.position}
+                total={versionQuery.data.total}
+                canOlder={versionQuery.data.position < versionQuery.data.total}
+                canNewer={versionQuery.data.position > 1}
+                loadingDirection={
+                  !versionQuery.isError &&
+                  versionNavigation &&
+                  (versionNavigation.targetVersionId === null ||
+                    (versionNavigation.targetVersionId === selectedVersionId &&
+                      previewEditor?.versionId !== selectedVersionId))
+                    ? versionNavigation.direction
+                    : null
+                }
+                activeCollaborators={users.filter((user) => !user.isYou).length}
+                onPrevious={() => void navigateVersion("older")}
+                onNext={() => void navigateVersion("newer")}
+                onBack={() => selectVersion(null)}
+                onRestore={handleRestoreVersion}
+                restoring={restoreVersion.isPending}
+              />
+            )}
             <div className="editor-canvas__stage">
               <div
                 className="editor-canvas__sizer"
@@ -1678,8 +2050,19 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
                         "always-show-collaboration-cursor",
                     )}
                   >
-                    <EditorContent editor={editor} />
-                    <AddPageButton editor={editor} editable={editable} />
+                    <div hidden={Boolean(selectedVersionId)}>
+                      <EditorContent editor={editor} />
+                    </div>
+                    {selectedVersionId && previewDocument ? (
+                      <VersionPreviewEditor
+                        key={selectedVersionId}
+                        document={previewDocument}
+                        versionId={selectedVersionId}
+                        onEditorChange={handlePreviewEditorChange}
+                      />
+                    ) : (
+                      <AddPageButton editor={editor} editable={editable} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -1691,17 +2074,21 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
               doc={doc}
               role={doc.role}
               users={users}
+              editor={editor}
+              selectedVersionId={selectedVersionId}
+              onSelectVersion={selectVersion}
               onClose={() => setSidebarOpen(false)}
               className="fixed inset-y-14 right-0 z-30 w-full sm:static sm:inset-auto sm:w-80 md:w-88 border-l border-border/50 shrink-0 shadow-lg sm:shadow-none"
             />
           )}
         </div>
         <EditorPagesFooter
-          editor={editor}
+          editor={footerEditor}
           onZoomChange={handleFooterZoomChange}
           handToolActive={handToolActive}
           onToggleHandTool={() => setHandToolActive((active) => !active)}
         />
       </div>
+    </VersionPreviewErrorBoundary>
   );
 }

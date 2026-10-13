@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import type { Editor } from "@tiptap/react";
 import {
   Check,
   ChevronRight,
   Clock,
   Copy,
-  Download,
   EllipsisVertical,
   Eye,
   FileText,
-  History,
   Info,
   Inbox,
-  Link2,
-  MessageSquare,
+  ArrowLeft,
   PanelRightClose,
   PencilLine,
   RotateCcw,
@@ -20,7 +18,6 @@ import {
   Share2,
   Trash2,
   X,
-  type LucideIcon,
   CircleFadingPlus,
 } from "lucide-react";
 import {
@@ -48,6 +45,14 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -77,7 +82,10 @@ import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import { useDocumentVersions } from "@/hooks/use-document-versions";
 import { TypingIndicator } from "./typing-indicator";
+import { VersionHistoryPanel } from "./version-history-panel";
+import { DocumentExportDialog } from "./document-export-dialog";
 
 type ConfirmationAction =
   | {
@@ -88,24 +96,6 @@ type ConfirmationAction =
   | { kind: "reject"; request: DocumentJoinRequest }
   | { kind: "revoke"; invitation: DocumentInvitation }
   | { kind: "remove"; member: DocumentMember };
-
-const UPCOMING_FEATURES: { icon: LucideIcon; title: string; hint: string }[] = [
-  {
-    icon: History,
-    title: "Version history",
-    hint: "Restore earlier snapshots and view audit log",
-  },
-  {
-    icon: MessageSquare,
-    title: "Inline comments",
-    hint: "Leave feedback on selected text",
-  },
-  {
-    icon: Download,
-    title: "Export formats",
-    hint: "Download as Markdown, HTML, or PDF",
-  },
-];
 
 function permissionDescription(role: DocumentRole) {
   switch (role) {
@@ -124,18 +114,28 @@ export function EditorSidebar({
   doc,
   className,
   onClose,
+  editor,
+  selectedVersionId,
+  onSelectVersion,
 }: {
   role: DocumentRole;
   users: PresenceUser[];
   doc: DocumentSummary;
   className?: string;
   onClose?: () => void;
+  editor: Editor | null;
+  selectedVersionId: string | null;
+  onSelectVersion: (versionId: string) => void;
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationAction | null>(
     null,
   );
+  const [showingVersionHistory, setShowingVersionHistory] = useState(false);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyBackRef = useRef<HTMLButtonElement>(null);
+  const previousHistoryScreen = useRef(false);
   const [openMemberMenu, setOpenMemberMenu] = useState<string | null>(null);
   const [openRoleMenu, setOpenRoleMenu] = useState<string | null>(null);
   const isOwner = canManageMembers(role);
@@ -166,6 +166,8 @@ export function EditorSidebar({
   const approveRequest = useApproveJoinRequest(doc.id);
   const rejectRequest = useRejectJoinRequest(doc.id);
   const revokeInvitation = useRevokeDocumentInvitation(doc.id);
+  const versions = useDocumentVersions(doc.id);
+  const latestVersion = versions.data?.pages[0]?.items[0];
 
   const onlineUsersById = new Map(users.map((user) => [user.id, user]));
   const reservedIds = new Set([
@@ -222,6 +224,15 @@ export function EditorSidebar({
     },
     [],
   );
+
+  useEffect(() => {
+    if (showingVersionHistory && !previousHistoryScreen.current) {
+      historyBackRef.current?.focus({ preventScroll: true });
+    } else if (!showingVersionHistory && previousHistoryScreen.current) {
+      historyTriggerRef.current?.focus({ preventScroll: true });
+    }
+    previousHistoryScreen.current = showingVersionHistory;
+  }, [showingVersionHistory]);
 
   function confirmAction() {
     if (!confirmation) return;
@@ -647,11 +658,15 @@ export function EditorSidebar({
                 htmlFor="notification-presence-category"
                 className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
               >
-                <span className="text-sm font-medium text-foreground">Presence alerts</span>
+                <span className="text-sm font-medium text-foreground">
+                  Presence alerts
+                </span>
                 <Switch
                   id="notification-presence-category"
                   checked={notificationPreferences.categories.presence}
-                  onCheckedChange={(value) => setCategoryPreference("presence", value)}
+                  onCheckedChange={(value) =>
+                    setCategoryPreference("presence", value)
+                  }
                 />
               </label>
               {isOwner && (
@@ -659,11 +674,15 @@ export function EditorSidebar({
                   htmlFor="notification-access-category"
                   className="flex cursor-pointer items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-card"
                 >
-                  <span className="text-sm font-medium text-foreground">Access alerts</span>
+                  <span className="text-sm font-medium text-foreground">
+                    Access alerts
+                  </span>
                   <Switch
                     id="notification-access-category"
                     checked={notificationPreferences.categories.access}
-                    onCheckedChange={(value) => setCategoryPreference("access", value)}
+                    onCheckedChange={(value) =>
+                      setCategoryPreference("access", value)
+                    }
                   />
                 </label>
               )}
@@ -671,7 +690,9 @@ export function EditorSidebar({
                 htmlFor="notification-volume"
                 className="flex items-center justify-between gap-3 px-3 py-3"
               >
-                <span className="text-sm font-medium text-foreground">Sound volume</span>
+                <span className="text-sm font-medium text-foreground">
+                  Sound volume
+                </span>
                 <input
                   id="notification-volume"
                   type="range"
@@ -679,7 +700,9 @@ export function EditorSidebar({
                   max="1"
                   step="0.05"
                   value={notificationPreferences.soundVolume}
-                  onChange={(event) => setSoundVolume(Number(event.currentTarget.value))}
+                  onChange={(event) =>
+                    setSoundVolume(Number(event.currentTarget.value))
+                  }
                   aria-valuetext={`${Math.round(notificationPreferences.soundVolume * 100)} percent`}
                   className="w-24 accent-primary"
                 />
@@ -711,358 +734,422 @@ export function EditorSidebar({
         {/* Tab 2: Share & Document Settings */}
         <TabsContent
           value="settings"
-          className="flex-1 overflow-y-auto p-4 space-y-6 mt-0"
+          className="relative min-h-0 flex-1 overflow-hidden p-0 mt-0"
         >
-          {/* Quick Share Link */}
-          <section className="space-y-3 rounded-xl border border-border/50 bg-card p-4 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Share2 className="size-4 text-primary" />
-              <h3 className="text-xs font-semibold text-foreground">
-                Link Sharing
-              </h3>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              A link alone doesn’t grant access. Invite collaborators or review
-              their requests below.
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                readOnly
-                value={
-                  typeof window !== "undefined" ? window.location.href : ""
-                }
-                className="h-8 font-mono text-[11px] bg-muted/30"
-              />
-              <Button
-                size="sm"
-                variant={copiedLink ? "secondary" : "default"}
-                onClick={handleCopyLink}
-                className="h-8 shrink-0 px-3 text-xs"
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="mr-1.5 size-3.5 text-emerald-500" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-1.5 size-3.5" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-          </section>
+          <div
+            className={cn(
+              "absolute inset-0 flex flex-col gap-6 overflow-y-auto p-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+              showingVersionHistory ? "-translate-x-full" : "translate-x-0",
+            )}
+            aria-hidden={showingVersionHistory}
+            inert={showingVersionHistory}
+          >
+            <DocumentExportDialog editor={editor} documentName={doc.title} />
 
-          {isOwner && (
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex gap-2 items-center">
-                  <CircleFadingPlus size={16} />
-                  Pending access
+            {/* Quick Share Link */}
+            <section className="space-y-3 rounded-xl border border-border/50 bg-card p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Share2 className="size-4 text-primary" />
+                <h3 className="text-xs font-semibold text-foreground">
+                  Link Sharing
                 </h3>
-                <Badge variant="outline" className="text-[11px]">
-                  {reservedIds.size}/{MAX_DOCUMENT_MEMBERS}
-                </Badge>
               </div>
-
-              {sharingPending ? (
-                <p className="text-xs text-muted-foreground">
-                  Loading pending access…
-                </p>
-              ) : sharingError && !sharing ? (
-                <div
-                  role="alert"
-                  className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A link alone doesn’t grant access. Invite collaborators or
+                review their requests below.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={
+                    typeof window !== "undefined" ? window.location.href : ""
+                  }
+                  className="h-8 font-mono text-[11px] bg-muted/30"
+                />
+                <Button
+                  size="sm"
+                  variant={copiedLink ? "secondary" : "default"}
+                  onClick={handleCopyLink}
+                  className="h-8 shrink-0 px-3 text-xs"
                 >
-                  <p className="font-medium text-foreground">
-                    Pending access couldn’t be loaded.
-                  </p>
-                  <p>{sharingErrorDescription}</p>
-                  {sharingLoadError instanceof ApiError &&
-                    sharingLoadError.code && (
-                      <p className="font-mono text-[10px] opacity-80">
-                        Error code: {sharingLoadError.code}
-                      </p>
-                    )}
-                  <p>
-                    No invitation or request was changed. Retry to load the
-                    latest information.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    onClick={retrySharing}
-                  >
-                    Try again
-                  </Button>
-                </div>
-              ) : !sharing ? (
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>Pending access is temporarily unavailable.</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    onClick={retrySharing}
-                  >
-                    Try again
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {sharingError && (
-                    <div
-                      role="alert"
-                      className="flex items-start justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
-                    >
-                      <div className="space-y-1">
-                        <p className="font-medium text-foreground">
-                          Refresh failed; showing the last loaded information.
-                        </p>
-                        <p className="text-muted-foreground">
-                          {sharingErrorDescription}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 shrink-0"
-                        onClick={retrySharing}
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  )}
-                  {!sharing.requests.length && !sharing.invitations.length ? (
-                    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
-                      <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                        <Inbox className="size-4" aria-hidden="true" />
-                      </span>
-                      <p className="text-xs font-medium text-foreground">
-                        No requests received or invitations sent
-                      </p>
-                      <p className="max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
-                        New invitations you send and access requests awaiting
-                        your review will appear here.
-                      </p>
-                    </div>
+                  {copiedLink ? (
+                    <>
+                      <Check className="mr-1.5 size-3.5 text-emerald-500" />
+                      Copied
+                    </>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-foreground">
-                          Join requests ({sharing?.requests.length ?? 0})
-                        </h4>
-                        {!sharing?.requests.length ? (
-                          <p className="text-xs text-muted-foreground">
-                            No one is waiting for access.
-                          </p>
-                        ) : (
-                          sharing.requests.map((request) => (
-                            <div
-                              key={request.id}
-                              className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
-                            >
-                              <Avatar className="size-8 shrink-0">
-                                {request.image && (
-                                  <AvatarImage
-                                    src={request.image}
-                                    alt={request.name || request.email}
-                                    referrerPolicy="no-referrer"
-                                  />
-                                )}
-                                <AvatarFallback className="text-xs">
-                                  {(request.name || request.email)
-                                    .trim()
-                                    .charAt(0)
-                                    .toUpperCase() || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium">
-                                  {request.name || request.email}
-                                </p>
-                                <p className="truncate text-[10px] text-muted-foreground">
-                                  {request.email}
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
-                                aria-label={`Grant access to ${request.name || request.email}`}
-                                title="Grant access"
-                                disabled={confirmationPending}
-                                onClick={() =>
-                                  setConfirmation({
-                                    kind: "approve",
-                                    request,
-                                    role: "viewer",
-                                  })
-                                }
-                              >
-                                <Check className="size-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="text-destructive"
-                                aria-label={`Decline request from ${request.name || request.email}`}
-                                title="Decline request"
-                                disabled={confirmationPending}
-                                onClick={() =>
-                                  setConfirmation({ kind: "reject", request })
-                                }
-                              >
-                                <X className="size-3.5" />
-                              </Button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-foreground">
-                          Invitations not yet accepted (
-                          {sharing?.invitations.length ?? 0})
-                        </h4>
-                        {!sharing?.invitations.length ? (
-                          <p className="text-xs text-muted-foreground">
-                            No pending invitations.
-                          </p>
-                        ) : (
-                          sharing.invitations.map((invitation) => (
-                            <div
-                              key={invitation.id}
-                              className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
-                            >
-                              <Avatar className="size-8 shrink-0">
-                                {invitation.image && (
-                                  <AvatarImage
-                                    src={invitation.image}
-                                    alt={invitation.name || invitation.email}
-                                    referrerPolicy="no-referrer"
-                                  />
-                                )}
-                                <AvatarFallback className="text-xs">
-                                  {(invitation.name || invitation.email)
-                                    .trim()
-                                    .charAt(0)
-                                    .toUpperCase() || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium">
-                                  {invitation.name || invitation.email}
-                                </p>
-                                <p className="truncate text-[10px] text-muted-foreground">
-                                  {invitation.email} · {invitation.role}
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="text-muted-foreground hover:text-destructive"
-                                aria-label={`Revoke invitation for ${invitation.email}`}
-                                title="Revoke invitation"
-                                disabled={confirmationPending}
-                                onClick={() =>
-                                  setConfirmation({
-                                    kind: "revoke",
-                                    invitation,
-                                  })
-                                }
-                              >
-                                <RotateCcw className="size-3.5" />
-                              </Button>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                      <Copy className="mr-1.5 size-3.5" />
+                      Copy
                     </>
                   )}
-                </>
-              )}
+                </Button>
+              </div>
             </section>
-          )}
 
-          {/* Document Metadata */}
-          <section className="space-y-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Info size={16} />
-              Document Details
-            </h3>
-            <div className="rounded-xl border border-border/50 bg-card/60 p-3.5 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <FileText className="size-3.5" /> Title
-                </span>
-                <span className="font-medium text-foreground truncate max-w-[160px]">
-                  {doc.title}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="size-3.5" /> Last Modified
-                </span>
-                <span className="text-foreground">
-                  {timeAgo(doc.updatedAt)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
-                <span className="text-muted-foreground">Document ID</span>
-                <span className="font-mono text-muted-foreground text-[10px]">
-                  {doc.id.slice(0, 8)}…
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Future Roadmap / Settings */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Link2 size={16} />
-                Coming Soon
-              </h3>
-              <Badge
-                variant="secondary"
-                className="text-[10px] px-1.5 py-0 font-normal"
-              >
-                Roadmap
-              </Badge>
-            </div>
-
-            <div className="grid gap-2">
-              {UPCOMING_FEATURES.map(({ icon: Icon, title, hint }) => (
-                <div
-                  key={title}
-                  className="flex items-start gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3 transition-colors hover:border-border hover:bg-muted/40"
-                >
-                  <div className="mt-0.5 rounded-md bg-muted p-1 text-muted-foreground">
-                    <Icon className="size-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-foreground leading-none">
-                        {title}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] px-1 py-0 text-muted-foreground"
-                      >
-                        Soon
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
-                      {hint}
-                    </p>
-                  </div>
+            {isOwner && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex gap-2 items-center">
+                    <CircleFadingPlus size={16} />
+                    Pending access
+                  </h3>
+                  <Badge variant="outline" className="text-[11px]">
+                    {reservedIds.size}/{MAX_DOCUMENT_MEMBERS}
+                  </Badge>
                 </div>
-              ))}
-            </div>
-          </section>
+
+                {sharingPending ? (
+                  <p className="text-xs text-muted-foreground">
+                    Loading pending access…
+                  </p>
+                ) : sharingError && !sharing ? (
+                  <div
+                    role="alert"
+                    className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
+                  >
+                    <p className="font-medium text-foreground">
+                      Pending access couldn’t be loaded.
+                    </p>
+                    <p>{sharingErrorDescription}</p>
+                    {sharingLoadError instanceof ApiError &&
+                      sharingLoadError.code && (
+                        <p className="font-mono text-[10px] opacity-80">
+                          Error code: {sharingLoadError.code}
+                        </p>
+                      )}
+                    <p>
+                      No invitation or request was changed. Retry to load the
+                      latest information.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      onClick={retrySharing}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : !sharing ? (
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <p>Pending access is temporarily unavailable.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      onClick={retrySharing}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {sharingError && (
+                      <div
+                        role="alert"
+                        className="flex items-start justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">
+                            Refresh failed; showing the last loaded information.
+                          </p>
+                          <p className="text-muted-foreground">
+                            {sharingErrorDescription}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 shrink-0"
+                          onClick={retrySharing}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                    {!sharing.requests.length && !sharing.invitations.length ? (
+                      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
+                        <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                          <Inbox className="size-4" aria-hidden="true" />
+                        </span>
+                        <p className="text-xs font-medium text-foreground">
+                          No requests received or invitations sent
+                        </p>
+                        <p className="max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+                          No one requested access yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-medium text-foreground">
+                            Join requests ({sharing?.requests.length ?? 0})
+                          </h4>
+                          {!sharing?.requests.length ? (
+                            <p className="text-xs text-muted-foreground">
+                              No one is waiting for access.
+                            </p>
+                          ) : (
+                            sharing.requests.map((request) => (
+                              <div
+                                key={request.id}
+                                className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
+                              >
+                                <Avatar className="size-8 shrink-0">
+                                  {request.image && (
+                                    <AvatarImage
+                                      src={request.image}
+                                      alt={request.name || request.email}
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
+                                  <AvatarFallback className="text-xs">
+                                    {(request.name || request.email)
+                                      .trim()
+                                      .charAt(0)
+                                      .toUpperCase() || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-medium">
+                                    {request.name || request.email}
+                                  </p>
+                                  <p className="truncate text-[10px] text-muted-foreground">
+                                    {request.email}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                                  aria-label={`Grant access to ${request.name || request.email}`}
+                                  title="Grant access"
+                                  disabled={confirmationPending}
+                                  onClick={() =>
+                                    setConfirmation({
+                                      kind: "approve",
+                                      request,
+                                      role: "viewer",
+                                    })
+                                  }
+                                >
+                                  <Check className="size-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-destructive"
+                                  aria-label={`Decline request from ${request.name || request.email}`}
+                                  title="Decline request"
+                                  disabled={confirmationPending}
+                                  onClick={() =>
+                                    setConfirmation({
+                                      kind: "reject",
+                                      request,
+                                    })
+                                  }
+                                >
+                                  <X className="size-3.5" />
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-medium text-foreground">
+                            Invitations not yet accepted (
+                            {sharing?.invitations.length ?? 0})
+                          </h4>
+                          {!sharing?.invitations.length ? (
+                            <p className="text-xs text-muted-foreground">
+                              No pending invitations.
+                            </p>
+                          ) : (
+                            sharing.invitations.map((invitation) => (
+                              <div
+                                key={invitation.id}
+                                className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 p-2"
+                              >
+                                <Avatar className="size-8 shrink-0">
+                                  {invitation.image && (
+                                    <AvatarImage
+                                      src={invitation.image}
+                                      alt={invitation.name || invitation.email}
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
+                                  <AvatarFallback className="text-xs">
+                                    {(invitation.name || invitation.email)
+                                      .trim()
+                                      .charAt(0)
+                                      .toUpperCase() || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-medium">
+                                    {invitation.name || invitation.email}
+                                  </p>
+                                  <p className="truncate text-[10px] text-muted-foreground">
+                                    {invitation.email} · {invitation.role}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-muted-foreground hover:text-destructive"
+                                  aria-label={`Revoke invitation for ${invitation.email}`}
+                                  title="Revoke invitation"
+                                  disabled={confirmationPending}
+                                  onClick={() =>
+                                    setConfirmation({
+                                      kind: "revoke",
+                                      invitation,
+                                    })
+                                  }
+                                >
+                                  <RotateCcw className="size-3.5" />
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            {/* Document Metadata */}
+            <section className="space-y-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Info size={16} />
+                Document Details
+              </h3>
+              <div className="rounded-xl border border-border/50 bg-card/60 p-3.5 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <FileText className="size-3.5" /> Title
+                  </span>
+                  <span className="font-medium text-foreground truncate max-w-[160px]">
+                    {doc.title}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="size-3.5" /> Last Modified
+                  </span>
+                  <span className="text-foreground">
+                    {timeAgo(doc.updatedAt)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
+                  <span className="text-muted-foreground">Document ID</span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    {doc.id.slice(0, 8)}…
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <Item
+              render={
+                <button
+                  type="button"
+                  ref={historyTriggerRef}
+                  aria-label="See all versions"
+                  onClick={() => setShowingVersionHistory(true)}
+                />
+              }
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-left hover:bg-muted/50"
+            >
+              <ItemMedia variant="icon" className="text-primary">
+                <Clock aria-hidden="true" />
+              </ItemMedia>
+              <ItemContent className="min-w-0">
+                <ItemTitle className="text-xs">Version history</ItemTitle>
+                {latestVersion ? (
+                  <ItemDescription className="flex items-center gap-1 text-[10px] leading-tight">
+                    <span className="shrink-0">Latest history at</span>
+                    <time
+                      className="truncate"
+                      dateTime={latestVersion.createdAt}
+                      title={new Date(latestVersion.createdAt).toLocaleString()}
+                    >
+                      {new Date(latestVersion.createdAt).toLocaleString()}
+                    </time>
+                    <span className="shrink-0">by</span>
+                    <Avatar className="size-4 shrink-0">
+                      {latestVersion.author.image && (
+                        <AvatarImage
+                          src={latestVersion.author.image}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                        />
+                      )}
+                      <AvatarFallback className="text-[8px]">
+                        {(latestVersion.author.name || "Synodos system")
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase() || "S"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 truncate">
+                      {latestVersion.author.name || "Synodos system"}
+                    </span>
+                  </ItemDescription>
+                ) : (
+                  <ItemDescription className="text-[10px]">
+                    {versions.isPending
+                      ? "Loading latest history…"
+                      : versions.isError
+                        ? "Latest history unavailable"
+                        : "No saved versions yet"}
+                  </ItemDescription>
+                )}
+                <span className="text-[10px] text-primary">
+                  See all versions
+                </span>
+              </ItemContent>
+              <ItemActions>
+                <ChevronRight
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </ItemActions>
+            </Item>
+          </div>
+
+          <div
+            className={cn(
+              "absolute inset-0 z-10 flex flex-col gap-4 overflow-y-auto p-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+              showingVersionHistory ? "translate-x-0" : "translate-x-full",
+            )}
+            aria-hidden={!showingVersionHistory}
+            inert={!showingVersionHistory}
+          >
+            <Button
+              ref={historyBackRef}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-fit -ml-2"
+              onClick={() => setShowingVersionHistory(false)}
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Back to Share &amp; Info
+            </Button>
+            <VersionHistoryPanel
+              documentId={doc.id}
+              role={role}
+              selectedVersionId={selectedVersionId}
+              onSelectVersion={onSelectVersion}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

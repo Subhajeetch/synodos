@@ -10,3 +10,9 @@ export const canEdit = (role: DocumentRole | null): boolean =>
 
 export const canManageMembers = (role: DocumentRole | null): boolean =>
   role === "owner";
+
+export const canCreateVersions = (role: DocumentRole | null): boolean =>
+  role === "owner" || role === "editor";
+
+export const canRestoreVersions = (role: DocumentRole | null): boolean =>
+  role === "owner";

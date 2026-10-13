@@ -36,6 +36,20 @@
       "when": 1791736940535,
       "tag": "0004_mature_dormammu",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791901650295,
+      "tag": "0005_sour_black_panther",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791901969552,
+      "tag": "0006_stormy_silver_fox",
+      "breakpoints": true
     }
   ]
 }
