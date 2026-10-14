@@ -16,10 +16,11 @@ const HOP_BY_HOP_HEADERS = [
 ];
 
 function getBackendOrigin(value: string | undefined): URL | null {
-  if (!value) return null;
+  const configuredValue = value?.trim();
+  if (!configuredValue) return null;
 
   try {
-    const url = new URL(value);
+    const url = new URL(configuredValue);
     if (
       !["http:", "https:"].includes(url.protocol) ||
       url.username ||
@@ -43,12 +44,19 @@ export async function onRequest({
   request: Request;
   env: Env;
 }): Promise<Response> {
-  const backendOrigin = getBackendOrigin(env.BACKEND_URL);
+  const configuredBackendUrl = env?.BACKEND_URL;
+  const backendOrigin = getBackendOrigin(configuredBackendUrl);
   if (!backendOrigin) {
-    console.error("[api-proxy] BACKEND_URL must be a valid HTTP(S) origin.");
-    return new Response("API proxy is not configured correctly.", {
+    const reason = configuredBackendUrl?.trim()
+      ? "BACKEND_URL must be an HTTP(S) origin, for example https://synodos-1.onrender.com."
+      : "BACKEND_URL is missing from this Pages deployment's runtime environment.";
+    console.error(`[api-proxy] ${reason}`);
+    return new Response(reason, {
       status: 500,
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     });
   }
 
