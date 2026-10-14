@@ -10,10 +10,12 @@ root-level `functions/` directory. Set the build environment variable
 service origin, for example `https://synodos-1.onrender.com` (no path or API
 route); configure it for every Pages environment you deploy.
 
-Do not set `VITE_API_URL` in the Pages build environment: the web app defaults
-to same-origin `/api` requests, which the Pages Function proxies to `BACKEND_URL`.
-For local development, the web app defaults to `http://localhost:4000`; set
-`VITE_API_URL` only if the API is at a different address.
+The production web app always uses same-origin `/api` requests, which the Pages
+Function proxies to `BACKEND_URL`; it ignores `VITE_API_URL` in production to
+prevent OAuth cookies from being set on a separate API domain. Remove any
+`VITE_API_URL` setting from the Pages build environment. For local development,
+the web app defaults to `http://localhost:4000`; set `VITE_API_URL` only if the
+local API is at a different address.
 
 On the Render API service, set both `BETTER_AUTH_URL` and `WEB_ORIGIN` to the
 public Pages site origin (for example, `https://your-site.pages.dev`). Set
