@@ -6,7 +6,7 @@ import { Header } from "@/components/landing/header";
 import { HeroSection } from "@/components/landing/hero-section";
 import { HeroVisualSection } from "@/components/landing/hero-visual-section";
 import { QuickStartSection } from "@/components/landing/quick-start-section";
-import { SyncDarkSection } from "@/components/landing/sync-dark-section";
+import { DarkModeSection } from "@/components/landing/darkmode-section";
 import { TeamSection } from "@/components/landing/team-section";
 import { TemplatesSection } from "@/components/landing/templates-section";
 
@@ -19,7 +19,7 @@ export function Landing() {
         <HeroVisualSection />
         <AnnouncementSection />
         <FeatureTabsSection />
-        <SyncDarkSection />
+        <DarkModeSection />
         <TeamSection />
         <QuickStartSection />
         <TemplatesSection />

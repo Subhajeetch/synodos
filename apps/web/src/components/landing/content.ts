@@ -19,23 +19,21 @@ import type { LucideIcon } from "lucide-react";
 /* -------------------------------------------------------------------------- */
 
 export const APP_NAME = "Synodos";
-export const APP_DOMAIN = "Synodos.com";
+export const APP_DOMAIN = "synodos.pages.dev/";
 
 /* -------------------------------------------------------------------------- */
 /* Every link target on the page lives here. Swap "#" for real routes later.  */
 /* -------------------------------------------------------------------------- */
 
 export const LINKS = {
-  home: "#",
-  login: "#",
-  tryFree: "#",
-  getStarted: "#",
+  home: "/",
+  login: "/login",
+  tryFree: "/signup",
   watchVideo: "#",
   seeHow: "#",
   readDocs: "#",
   share: "#",
-  pricing: "#",
-  blog: "#",
+  blog: "/blogs",
   realtimeEditing: "#",
   richText: "#",
   commentsMentions: "#",
@@ -46,7 +44,6 @@ export const LINKS = {
   contentTeams: "#",
   documentation: "#",
   guides: "#",
-  changelog: "#",
   careers: "#",
   privacy: "#",
   twitter: "#",
@@ -74,8 +71,8 @@ export const IMAGES = {
   },
   hero: "/images/hero-image.webp", // main editor screenshot, 16:10
   announce: "/images/announcement-image.webp", // small floating UI mock, 4:3
-  syncEditor: "/images/sync-editor.webp", // dark editor screenshot, ~16:9
-  syncCard: "/images/sync-card.webp", // floating light card, ~10:7
+  darkmodeEditor: "/images/darkmode-editor.webp", // dark editor screenshot, ~16:9
+  darkmodeCard: "/images/darkmode-card.webp", // floating light card, ~10:7
   team: [
     "/images/ask-to-join.webp",
     "/images/version-history.png",
@@ -96,8 +93,8 @@ export interface ImageSpec {
 export const IMAGE_SPECS = {
   hero: { width: 1600, height: 1000, ratio: "16 / 10" },
   announce: { width: 800, height: 500, ratio: "4 / 3" },
-  syncEditor: { width: 1600, height: 900, ratio: "16 / 9" },
-  syncCard: { width: 1000, height: 700, ratio: "10 / 7" },
+  darkmodeEditor: { width: 1600, height: 900, ratio: "16 / 9" },
+  darkmodeCard: { width: 1000, height: 700, ratio: "10 / 7" },
   team: { width: 1600, height: 1000, ratio: "16 / 10" },
   quickStart: { width: 1600, height: 1000, ratio: "16 / 8" },
   templates: { width: 1500, height: 1000, ratio: "3 / 2" },
@@ -120,6 +117,7 @@ export const PALETTE = [
 export interface Collaborator {
   name: string;
   color: string;
+  src: string;
 }
 
 const COLLABORATOR_NAMES = [
@@ -137,8 +135,20 @@ const COLLABORATOR_NAMES = [
   "Miles",
 ] as const;
 
+function collaboratorAvatarUrl(name: string) {
+  let hash = 0;
+  for (const character of name) {
+    hash = (Math.imul(hash, 31) + character.charCodeAt(0)) >>> 0;
+  }
+  return `https://i.pravatar.cc/80?img=${(hash % 70) + 1}`;
+}
+
 export const COLLABORATORS: readonly Collaborator[] = COLLABORATOR_NAMES.map(
-  (name, i) => ({ name, color: PALETTE[i % PALETTE.length] ?? PALETTE[0] }),
+  (name, i) => ({
+    name,
+    color: PALETTE[i % PALETTE.length] ?? PALETTE[0],
+    src: collaboratorAvatarUrl(name),
+  }),
 );
 
 /** First three collaborators, shown as an overlapping avatar stack. */
@@ -160,11 +170,10 @@ export type NavEntry = NavLink | NavGroup;
 
 export const NAV: readonly NavEntry[] = [
   {
-    label: "Product",
+    label: "Features",
     items: [
       { label: "Real-time editing", href: LINKS.realtimeEditing },
       { label: "Rich-text editor", href: LINKS.richText },
-      { label: "Comments & mentions", href: LINKS.commentsMentions },
       { label: "Version history", href: LINKS.versionHistory },
     ],
   },
@@ -182,17 +191,15 @@ export const NAV: readonly NavEntry[] = [
     items: [
       { label: "Documentation", href: LINKS.documentation },
       { label: "Guides", href: LINKS.guides },
-      { label: "Changelog", href: LINKS.changelog },
     ],
   },
-  { label: "Pricing", href: LINKS.pricing },
   { label: "Blog", href: LINKS.blog },
 ];
 
 export const HEADER = {
   beta: "Beta",
   login: "Log in",
-  cta: "Try for free",
+  cta: "Give it a try",
   menuOpen: "Open menu",
   menuClose: "Close menu",
 } as const;
@@ -207,12 +214,10 @@ export const HERO = {
   titleAfter: "collaboration",
   subtitle:
     "One shared editor where your whole team writes, edits and comments together, with every keystroke synced instantly.",
-  cta: "Get started for free",
+  cta: "Try it out",
   cursors: {
-    lineEnd: { name: "Mira", color: PALETTE[0] },
-    left: { name: "Sam", color: PALETTE[3] },
-    right: { name: "Jules", color: PALETTE[5] },
-    pill: { name: "Ava", color: PALETTE[2] },
+    afterTitleBefore: { name: "Subh", color: PALETTE[0] },
+    beforeTitleAfter: { name: "Meera", color: PALETTE[3] },
   },
 } as const;
 
@@ -292,14 +297,14 @@ export const FEATURES: {
   ],
 };
 
-export const SYNC = {
-  title: "Type here, see it everywhere.",
-  body: "Every keystroke syncs across everyone's screen in milliseconds. No save button, no refresh, no conflicts.",
+export const DARKMODE = {
+  title: "Now, even in Dark Mode.",
+  body: "Settle into a focused dark workspace with a softer interface that is easy on the eyes, especially when you're working late.",
   windowTitle: "Sprint retro",
   editorAlt:
-    "A dark-mode editor with two collaborators typing in the same paragraph at once.",
+    "A document open in the app's dark mode, with a calm, high-contrast interface.",
   cardAlt:
-    "The same document appearing instantly on a second teammate's screen.",
+    "A dark-mode document interface with readable text and carefully balanced contrast.",
 } as const;
 
 export const TEAM = {
@@ -363,8 +368,8 @@ export const TEMPLATES = {
 
 export const CTA = {
   titleLines: ["Ready to go? Start", "writing together."],
-  button: "Get started for free",
-  note: "No credit card needed. Create your first document in seconds.",
+  button: "Try it out",
+  note: "This is just a Demo Project, try it out & rate it.",
 } as const;
 
 export const FOOTER = {
@@ -397,7 +402,6 @@ export const FOOTER = {
       links: [
         { label: "Overview", href: LINKS.overview },
         { label: "Roadmap", href: LINKS.roadmap },
-        { label: "Changelog", href: LINKS.changelog },
         { label: "Book a demo", href: LINKS.bookDemo },
       ],
     },

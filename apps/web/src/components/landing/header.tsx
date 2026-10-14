@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
-import { APP_NAME, HEADER, LINKS, NAV } from "@/components/landing/content";
+import { HEADER, LINKS, NAV } from "@/components/landing/content";
 import type { NavGroup } from "@/components/landing/content";
-import { Button, Container, LogoMark } from "@/components/landing/ui";
+import { Button, Container } from "@/components/landing/ui";
+import { Logo } from "@/components/ui/logo";
 
 const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -137,12 +138,8 @@ export function Header() {
               href={LINKS.home}
               className="flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight"
             >
-              <LogoMark />
-              {APP_NAME}
+              <Logo className="mx-auto h-6 w-auto text-[color:var(--lp-fg)] [--logo-background:#F8F8F8]" />
             </a>
-            <span className="ml-2 rounded-md bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[color:var(--lp-muted)]">
-              {HEADER.beta}
-            </span>
 
             <nav ref={navRef} aria-label="Main" className="ml-4 hidden items-center lg:flex">
               {NAV.map((entry) =>
@@ -190,11 +187,17 @@ export function Header() {
 
       {/* Sibling of <header>, not a child: backdrop-filter would otherwise become
           the containing block for this fixed panel. */}
-      {mobileOpen && (
-        <div
-          id="lp-mobile-menu"
-          className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-[#F8F8F8] lg:hidden"
-        >
+      <div
+        id="lp-mobile-menu"
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
+        className={`fixed inset-x-0 bottom-0 top-14 z-40 grid bg-[#F8F8F8] lg:hidden motion-safe:transition-[grid-template-rows,opacity,filter] motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none motion-reduce:filter-none ${
+          mobileOpen
+            ? "grid-rows-[1fr] opacity-100 blur-0"
+            : "pointer-events-none grid-rows-[0fr] opacity-0 blur-[12px]"
+        }`}
+      >
+        <div className="min-h-0 overflow-y-auto">
           <Container className="pb-10 pt-2">
             <nav aria-label="Mobile">
               {NAV.map((entry) => {
@@ -227,8 +230,12 @@ export function Header() {
                         className={`size-4 text-[color:var(--lp-muted)] motion-safe:transition-transform ${open ? "rotate-180" : ""}`}
                       />
                     </button>
-                    {open && (
-                      <ul id={panelId} className="pb-3">
+                    <div
+                      className={`grid motion-safe:transition-[grid-template-rows,opacity] motion-safe:duration-400 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      }`}
+                    >
+                      <ul id={panelId} aria-hidden={!open} inert={!open} className="min-h-0 overflow-hidden pb-3">
                         {entry.items.map((item) => (
                           <li key={item.label}>
                             <a
@@ -241,7 +248,7 @@ export function Header() {
                           </li>
                         ))}
                       </ul>
-                    )}
+                    </div>
                   </div>
                 );
               })}
@@ -256,7 +263,7 @@ export function Header() {
             </div>
           </Container>
         </div>
-      )}
+      </div>
     </>
   );
 }

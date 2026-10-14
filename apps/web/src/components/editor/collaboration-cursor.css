@@ -4,11 +4,25 @@
  * it. The whole cursor fades in on activity, then out when idle.
  *
  * The cursor remains active for three seconds after its last position update.
+ *
+ * Zoom behaviour: the badge is counter-scaled by 1/--zoom so it stays roughly
+ * the same on-screen size. The scale is anchored to the badge's BOTTOM-LEFT
+ * corner (the point that touches the caret), so the badge never drifts away
+ * from the caret no matter how far the document is zoomed in or out.
  */
 
 /* ── Caret ─────────────────────────────────────────────── */
 .collaboration-carets__caret.collaboration-cursor {
   --_color: var(--collaboration-cursor-color, #2563eb);
+
+  /*
+   * Counter-zoom factor for the badge (1 = natural size).
+   * Clamped so the badge doesn't get huge/tiny at extreme zoom levels.
+   * Widen the clamp range (or replace it with calc(1 / var(--zoom, 1)))
+   * for a strictly constant on-screen size.
+   */
+  --_badge-scale: clamp(0.8, calc(1 / var(--zoom, 1)), 1.6);
+
   position: relative;
   margin-inline: -1px;
   border-left: 2px solid var(--_color);
@@ -30,6 +44,7 @@
   bottom: calc(100% - 1px);
   /* tucked 1px over the caret for a seamless join */
   left: -2px;
+  /* flush with the caret's outer left edge */
   z-index: 5;
 
   display: flex;
@@ -56,12 +71,25 @@
   pointer-events: none;
   user-select: none;
 
-  transform: translateY(3px) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6)) scale(0.97);
-  transition: transform 180ms ease-out;
+  /*
+   * Anchor all scaling to the corner that touches the caret.
+   * (The default origin is the badge's center, which is what made the
+   * badge slide sideways/up/down when the zoom changed.)
+   */
+  transform-origin: left bottom;
+
+  /*
+   * Zoom compensation uses the standalone `scale` property and the entrance
+   * slide uses `translate`, so only the slide is transitioned. The scale
+   * updates instantly and never lags behind the document while zooming.
+   */
+  scale: var(--_badge-scale);
+  translate: 0 3px;
+  transition: translate 180ms ease-out;
 }
 
 .collaboration-cursor--active .collaboration-cursor__badge {
-  transform: translateY(0) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6));
+  translate: 0 0;
 }
 
 .always-show-collaboration-cursor .collaboration-carets__caret.collaboration-cursor {
@@ -69,7 +97,7 @@
 }
 
 .always-show-collaboration-cursor .collaboration-cursor__badge {
-  transform: translateY(0) scale(clamp(0.8, calc(1 / var(--zoom, 1)), 1.6));
+  translate: 0 0;
 }
 
 /* White text on dark/mid colors, near-black on light ones (yellow, mint...). */
@@ -123,6 +151,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .collaboration-carets__caret.collaboration-cursor,
   .collaboration-cursor__badge {
     transition-duration: 0.01ms;

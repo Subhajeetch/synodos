@@ -11,7 +11,7 @@ import {
 import type { Collaborator } from "@/components/landing/content";
 import { AvatarGroup, Button, Container, Section } from "@/components/landing/ui";
 
-/* ----- Decorative collaborator pills (CSS only, no images) ----- */
+/* ----- Decorative collaborator pills ----- */
 
 function CollabPill({ person }: { person: Collaborator }) {
   return (
@@ -24,10 +24,24 @@ function CollabPill({ person }: { person: Collaborator }) {
       }}
     >
       <span
-        className="grid size-5 place-items-center rounded-full text-[10px] font-semibold text-white"
+        className="relative grid size-5 shrink-0 place-items-center overflow-hidden rounded-full text-[10px] font-semibold text-white"
         style={{ backgroundColor: person.color }}
       >
         {person.name.charAt(0)}
+        <img
+          src={person.src}
+          alt=""
+          width={80}
+          height={80}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          draggable={false}
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+          className="absolute inset-0 size-full object-cover"
+        />
       </span>
       {person.name}
     </span>

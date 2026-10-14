@@ -10,39 +10,30 @@ export function HeroSection() {
           <span className="relative inline-block">
             {HERO.titleBefore}
             <CollabCursor
-              name={cursors.lineEnd.name}
-              color={cursors.lineEnd.color}
+              name={cursors.afterTitleBefore.name}
+              color={cursors.afterTitleBefore.color}
+              avatar="/user-images/user-1.webp"
               duration={7}
-              className="left-full top-[0.06em] ml-[0.14em]"
+              className="left-full top-1/2 ml-px -translate-y-1/2"
             />
           </span>
           <br className="hidden md:block" />{" "}
           <span className="relative inline-block">
             <Highlight>{HERO.highlight}</Highlight>
-            <CollabCursor
-              name={cursors.left.name}
-              color={cursors.left.color}
-              duration={8.5}
-              delay={-2}
-              className="right-full top-[0.1em] mr-[0.35em] hidden md:block"
-            />
-            <CollabCursor
-              name={cursors.right.name}
-              color={cursors.right.color}
-              duration={6.5}
-              delay={-4}
-              className="left-full top-[0.42em] ml-[0.3em] hidden md:block"
-            />
-            <CollabCursor
-              name={cursors.pill.name}
-              color={cursors.pill.color}
-              duration={9}
-              delay={-1}
-              className="left-[66%] top-[0.3em]"
-            />
           </span>
           <br className="hidden md:block" />{" "}
-          {HERO.titleAfter}
+          <span className="relative inline-block">
+            <CollabCursor
+              name={cursors.beforeTitleAfter.name}
+              color={cursors.beforeTitleAfter.color}
+              avatar="/user-images/user-2.webp"
+              duration={8.5}
+              delay={-2}
+              upsideDown
+              className="right-full top-1/2 mr-px mt-2 -translate-y-1/2"
+            />
+            {HERO.titleAfter}
+          </span>
         </h1>
 
         <p className="lp-muted mx-auto mt-8 max-w-md text-[15px] leading-relaxed md:text-base">
@@ -50,7 +41,7 @@ export function HeroSection() {
         </p>
 
         <div className="mt-8">
-          <Button size="lg" chevron href={LINKS.getStarted} className="w-full sm:w-auto">
+          <Button size="lg" chevron href={LINKS.login} className="w-full sm:w-auto">
             {HERO.cta}
           </Button>
         </div>

@@ -3,7 +3,6 @@ import {
   Button,
   DemoImage,
   GradientBackdrop,
-  LogoMark,
   Reveal,
 } from "@/components/landing/ui";
 
@@ -27,7 +26,7 @@ export function AnnouncementSection() {
 
           <div className="relative z-10 p-6 sm:p-8 md:w-[46%] md:p-12">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/70 py-1 pl-1.5 pr-3 text-sm font-semibold backdrop-blur">
-              <LogoMark className="size-5" />
+              <img src="/synodos-logo-short.webp" className="w-6 h-6 rounded-[6px]" />
               {APP_NAME}
             </span>
             <h2 id="lp-announce-title" className="mt-5 text-xl font-semibold tracking-tight sm:text-2xl">

@@ -224,41 +224,79 @@ export function Highlight({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* CollabCursor: multiplayer caret + avatar + tiny name tag                   */
-/* Position it with utility classes from a `relative` parent. Its caret       */
-/* height is 1.1em, so it scales with the surrounding text.                   */
-/* -------------------------------------------------------------------------- */
-
 export function CollabCursor({
   name,
   color,
+  avatar,
   showTag = true,
   duration = 7,
   delay = 0,
+  upsideDown = false,
   className,
 }: {
   name: string;
   color: string;
+  /** Optional avatar image URL. Falls back to the first letter of `name`. */
+  avatar?: string;
   showTag?: boolean;
   /** Float animation length in seconds. */
   duration?: number;
   delay?: number;
+  /** Flips the pill so it hangs below the caret instead of sitting above it. */
+  upsideDown?: boolean;
   className?: string;
 }) {
   const style = {
     "--lp-c": color,
     "--lp-dur": `${duration}s`,
     "--lp-delay": `${delay}s`,
+    // The line's size is set inline (em-based, so it matches the heading's text
+    // size) so that no stylesheet rule can collapse or hide it.
+    width: "clamp(3px, 0.05em, 5px)",
+    height: "var(--lp-caret-h, 0.8em)",
   } as CSSProperties;
+
+  const initial = (Array.from(name.trim())[0] ?? "?").toUpperCase();
+
   return (
     <span
       aria-hidden="true"
       style={style}
-      className={cx("lp-cursor pointer-events-none absolute z-10", className)}
+      className={cx(
+        "lp-caret pointer-events-none absolute z-10",
+        upsideDown && "lp-caret--upside-down",
+        className,
+      )}
     >
-      <span className="lp-cursor__avatar">{name.charAt(0)}</span>
-      {showTag && <span className="lp-cursor__tag">{name}</span>}
+      {/* The float animation lives on this inner wrapper so it never fights
+          the transform/translate utilities passed in through `className`. */}
+      <span className="lp-caret__float absolute inset-0">
+        {/* The vertical line (the "text caret") */}
+        <span
+          className="absolute inset-0 rounded-[1px]"
+          style={{ backgroundColor: color }}
+        />
+        {showTag && (
+          <span className="lp-caret__tag">
+            <span className="lp-caret__avatar">
+              {initial}
+              {avatar && (
+                <img
+                  className="lp-caret__image"
+                  src={avatar}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  draggable={false}
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+            </span>
+            <span className="lp-caret__name">{name}</span>
+          </span>
+        )}
+      </span>
     </span>
   );
 }
@@ -286,25 +324,11 @@ export function Avatar({
     "inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-semibold text-white",
     ring && "ring-2 ring-white",
   );
-  if (person.src) {
-    return (
-      <img
-        src={person.src}
-        alt={person.name}
-        width={size}
-        height={size}
-        loading="lazy"
-        decoding="async"
-        className={cx(classes, "object-cover")}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
   return (
     <span
       role="img"
       aria-label={person.name}
-      className={classes}
+      className={cx(classes, "relative")}
       style={{
         width: size,
         height: size,
@@ -313,6 +337,21 @@ export function Avatar({
       }}
     >
       {person.name.charAt(0)}
+      {person.src && (
+        <img
+          src={person.src}
+          alt=""
+          width={size}
+          height={size}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+          className="absolute inset-0 size-full rounded-full object-cover"
+        />
+      )}
     </span>
   );
 }
@@ -333,8 +372,8 @@ export function AvatarGroup({
       {people.map((person, i) => (
         <span
           key={person.name}
-          className="inline-flex"
-          style={{ marginLeft: i === 0 ? 0 : -overlap }}
+          className="relative inline-flex"
+          style={{ marginLeft: i === 0 ? 0 : -overlap, zIndex: i + 1 }}
         >
           <Avatar person={person} size={size} />
         </span>
@@ -342,7 +381,7 @@ export function AvatarGroup({
       {extra ? (
         <span
           className="inline-flex items-center justify-center rounded-full bg-[#ECECF0] px-1.5 text-xs font-medium text-[color:var(--lp-muted)] ring-2 ring-white"
-          style={{ marginLeft: -overlap, height: size, minWidth: size }}
+          style={{ position: "relative", zIndex: people.length + 1, marginLeft: -overlap, height: size, minWidth: size }}
         >
           +{extra}
         </span>
