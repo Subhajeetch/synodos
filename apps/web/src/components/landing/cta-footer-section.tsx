@@ -24,7 +24,7 @@ export function CtaFooterSection() {
                 ))}
               </h2>
               <div className="mt-8">
-                <Button size="lg" chevron href={LINKS.getStarted} className="w-full sm:w-auto">
+                <Button size="lg" chevron href={LINKS.tryFree} className="w-full sm:w-auto">
                   {CTA.button}
                 </Button>
               </div>
