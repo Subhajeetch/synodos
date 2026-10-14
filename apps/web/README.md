@@ -1,5 +1,29 @@
 # React + TypeScript + Vite
 
+## Cloudflare Pages deployment
+
+In Cloudflare Pages, leave the repository root directory at its default (the
+repository root), use `pnpm --filter web build` as the build command, and set
+`apps/web/dist` as the build output directory. This ensures Pages discovers the
+root-level `functions/` directory. Set the build environment variable
+`NODE_VERSION` to `24`. Set the Pages runtime variable `BACKEND_URL` to the API
+service origin, for example `https://synodos-1.onrender.com` (no path or API
+route); configure it for every Pages environment you deploy.
+
+Do not set `VITE_API_URL` in the Pages build environment: the web app defaults
+to same-origin `/api` requests, which the Pages Function proxies to `BACKEND_URL`.
+For local development, the web app defaults to `http://localhost:4000`; set
+`VITE_API_URL` only if the API is at a different address.
+
+On the Render API service, set both `BETTER_AUTH_URL` and `WEB_ORIGIN` to the
+public Pages site origin (for example, `https://your-site.pages.dev`). Set
+`BETTER_AUTH_URL` to that same origin on the collab service so it can fetch the
+auth JWKS through the Pages proxy. Update the Google and GitHub OAuth
+authorized callback URLs to:
+
+- `https://your-site.pages.dev/api/auth/callback/google`
+- `https://your-site.pages.dev/api/auth/callback/github`
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

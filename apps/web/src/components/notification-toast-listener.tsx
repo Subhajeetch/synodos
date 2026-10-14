@@ -11,7 +11,9 @@ import { authClient } from "@/lib/auth-client";
 import { useNavigate } from "react-router";
 import { notificationKey } from "@/hooks/use-notifications";
 
-const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const API_URL: string =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? "http://localhost:4000" : "");
 
 export function NotificationToastListener() {
   const { data: notifications } = useNotifications();
