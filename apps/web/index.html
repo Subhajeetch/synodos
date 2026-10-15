@@ -2,13 +2,92 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let theme = "light";
+
+        try {
+          const savedTheme = localStorage.getItem("theme");
+          if (savedTheme === "dark" || savedTheme === "light") {
+            theme = savedTheme;
+          } else if (savedTheme === "system") {
+            localStorage.setItem("theme", "light");
+          }
+        } catch {
+          // Keep the light default when storage is unavailable.
+        }
+
+        root.classList.remove("light", "dark");
+        root.classList.add(theme);
+        root.style.colorScheme = theme;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&display=swap"
-        rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web</title>
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta
+      name="description"
+      content="Bring your team’s work together in Synodos: a shared workspace for writing, editing, and organizing documents in real time."
+    />
+    <link rel="canonical" href="https://synodos.pages.dev/" />
+    <title>Synodos | Real-Time Collaborative Docs for Teams</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Synodos" />
+    <meta property="og:title" content="Synodos | Real-Time Collaborative Docs for Teams" />
+    <meta
+      property="og:description"
+      content="Bring your team’s work together in Synodos: a shared workspace for writing, editing, and organizing documents in real time."
+    />
+    <meta property="og:url" content="https://synodos.pages.dev/" />
+    <meta
+      property="og:image"
+      content="https://synodos.pages.dev/seo-images/synodos-snapshot.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1647" />
+    <meta property="og:image:height" content="992" />
+    <meta
+      property="og:image:alt"
+      content="Synodos collaborative document editor showing a shared team document and live collaborators."
+    />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Synodos | Real-Time Collaborative Docs for Teams" />
+    <meta
+      name="twitter:description"
+      content="Bring your team’s work together in Synodos: a shared workspace for writing, editing, and organizing documents in real time."
+    />
+    <meta
+      name="twitter:image"
+      content="https://synodos.pages.dev/seo-images/synodos-snapshot.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Synodos collaborative document editor showing a shared team document and live collaborators."
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Synodos",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": "https://synodos.pages.dev/",
+        "description": "A shared workspace for teams to write, edit, and organize documents in real time.",
+        "image": "https://synodos.pages.dev/seo-images/synodos-snapshot.png"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

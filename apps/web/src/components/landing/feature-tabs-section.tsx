@@ -110,7 +110,7 @@ export function FeatureTabsSection() {
             id="lp-feature-panel"
             role="tabpanel"
             aria-labelledby={`lp-feature-tab-${current.id}`}
-            className="lp-fade lp-muted mx-auto mt-5 min-h-[3.25rem] max-w-md text-[15px] leading-relaxed"
+            className="lp-tab-panel-transition lp-muted mx-auto mt-5 min-h-[3.25rem] max-w-md text-[15px] leading-relaxed"
           >
             {current.caption}
           </p>

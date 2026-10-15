@@ -17,7 +17,7 @@ export function AnnouncementSection() {
           {/* The gradient is clipped to the card; the demo image is not. The
               gradient is zoomed from the bottom-left so its baked-in corner
               falls outside the card. */}
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden rounded-3xl">
             <GradientBackdrop
               src={IMAGES.gradients.announce}
               imgClassName=""
@@ -45,7 +45,7 @@ export function AnnouncementSection() {
             </div>
           </div>
 
-          <div className="relative z-10 -mb-8 px-6 sm:px-8 md:absolute md:bottom-[-28px] md:right-8 md:mb-0 md:w-[48%] md:p-0">
+          <div className="relative transform translate-y-4 md:transform-none md:translate-y-0 z-10 -mb-8 px-6 sm:px-8 md:absolute md:bottom-[-28px] md:right-8 md:mb-0 md:w-[48%] md:p-0">
             <DemoImage
               src={IMAGES.announce}
               alt={ANNOUNCE.alt}

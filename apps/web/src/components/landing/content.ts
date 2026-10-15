@@ -22,38 +22,37 @@ export const APP_NAME = "Synodos";
 export const APP_DOMAIN = "synodos.pages.dev/";
 
 /* -------------------------------------------------------------------------- */
-/* Every link target on the page lives here. Swap "#" for real routes later.  */
+/* Every link target on the page lives here. */
 /* -------------------------------------------------------------------------- */
 
 export const LINKS = {
   home: "/",
   login: "/login",
   tryFree: "/signup",
-  watchVideo: "#",
-  seeHow: "#",
-  readDocs: "#",
-  share: "#",
-  blog: "/blogs",
-  realtimeEditing: "#",
-  richText: "#",
-  commentsMentions: "#",
-  versionHistory: "#",
-  teamWikis: "#",
-  meetingNotes: "#",
-  productSpecs: "#",
-  contentTeams: "#",
-  documentation: "#",
-  guides: "#",
+  ytVideoId: "ausL8Qs1C-g",
+  seeHow: "/learn/collaboration",
+  readDocs: "/docs",
+  share: "/learn/sharing",
+  blog: "/blog",
+  realtimeEditing: "/learn/realtime-editing",
+  richText: "/learn/rich-text-editor",
+  versionHistory: "/learn/version-history",
+  teamWikis: "/learn/team-wikis",
+  meetingNotes: "/learn/meeting-notes",
+  productSpecs: "/learn/product-specs",
+  contentTeams: "/learn/content-teams",
+  documentation: "/docs",
+  guides: "/guides",
   careers: "#",
-  privacy: "#",
+  privacy: "/learn/privacy",
   twitter: "#",
   discord: "#",
   linkedin: "#",
   overview: "#",
   roadmap: "#",
   bookDemo: "#",
-  github: "#",
-  contact: "#",
+  github: "https://github.com/Subhajeetch/synodos",
+  contact: "/contact",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -73,14 +72,17 @@ export const IMAGES = {
   announce: "/images/announcement-image.webp", // small floating UI mock, 4:3
   darkmodeEditor: "/images/darkmode-editor.webp", // dark editor screenshot, ~16:9
   darkmodeCard: "/images/darkmode-card.webp", // floating light card, ~10:7
-  team: [
-    "/images/ask-to-join.webp",
-    "/images/version-history.png",
-    "/images/users-snapshot.png",
-  ], // each 16:10
   quickStart: "/images/new-document.png", // editor inside browser, 16:10
   templates: "/images/templates-preview.png", // template/doc preview, 3:2
 };
+
+export const VIDEOS = {
+  team: [
+    "/videos/ask-to-join.mp4",
+    "/videos/version-control.mp4",
+    "/videos/online-users.mp4",
+  ],
+} as const;
 
 export interface ImageSpec {
   width: number;
@@ -194,6 +196,7 @@ export const NAV: readonly NavEntry[] = [
     ],
   },
   { label: "Blog", href: LINKS.blog },
+  { label: "Contact", href: LINKS.contact },
 ];
 
 export const HEADER = {
@@ -213,7 +216,7 @@ export const HERO = {
   highlight: "real-time",
   titleAfter: "collaboration",
   subtitle:
-    "One shared editor where your whole team writes, edits and comments together, with every keystroke synced instantly.",
+    "One shared editor where your whole team writes and edits together, with every keystroke synced instantly.",
   cta: "Try it out",
   cursors: {
     afterTitleBefore: { name: "Subh", color: PALETTE[0] },
@@ -224,7 +227,7 @@ export const HERO = {
 export const HERO_VISUAL = {
   label: "Product preview",
   windowTitle: "Launch plan",
-  alt: "The editor open on a launch plan, with several teammates' cursors and comments visible in the document.",
+  alt: "The editor open on a launch plan, with several teammates' cursors visible in the document.",
   hint: "or watch the whole video",
   button: "Watch video",
 } as const;
@@ -356,7 +359,7 @@ export const TEMPLATES = {
     {
       icon: FileText,
       title: "Product specs",
-      body: "Draft, review and align on specs with comments and suggestions in one place.",
+      body: "Draft, review and align on specs together in one shared document.",
     },
     {
       icon: BookOpen,
@@ -382,35 +385,29 @@ export const FOOTER = {
   },
   columns: [
     {
-      heading: "Company",
+      heading: "Features",
       links: [
-        { label: "Blog", href: LINKS.blog },
-        { label: "Careers", href: LINKS.careers },
-        { label: "Privacy", href: LINKS.privacy },
+        { label: "Real-time editing", href: LINKS.realtimeEditing },
+        { label: "Rich-text editor", href: LINKS.richText },
+        { label: "Version history", href: LINKS.versionHistory },
       ],
     },
     {
-      heading: "Social",
+      heading: "Use cases",
       links: [
-        { label: "Twitter", href: LINKS.twitter },
-        { label: "Discord", href: LINKS.discord },
-        { label: "LinkedIn", href: LINKS.linkedin },
+        { label: "Team wikis", href: LINKS.teamWikis },
+        { label: "Meeting notes", href: LINKS.meetingNotes },
+        { label: "Product specs", href: LINKS.productSpecs },
+        { label: "Content teams", href: LINKS.contentTeams },
       ],
     },
     {
-      heading: "Product",
-      links: [
-        { label: "Overview", href: LINKS.overview },
-        { label: "Roadmap", href: LINKS.roadmap },
-        { label: "Book a demo", href: LINKS.bookDemo },
-      ],
-    },
-    {
-      heading: "Resources",
+      heading: "Learn",
       links: [
         { label: "Documentation", href: LINKS.documentation },
-        { label: "GitHub", href: LINKS.github },
-        { label: "Contact us", href: LINKS.contact },
+        { label: "Guides", href: LINKS.guides },
+        { label: "Blog", href: LINKS.blog },
+        { label: "Contact", href: LINKS.contact },
       ],
     },
   ],

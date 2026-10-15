@@ -6,15 +6,26 @@ import { EditorPage } from "@/pages/editor";
 import OverviewPage from "@/pages/overview";
 import ProfilePage from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
-import LandingPage from "@/pages/landing"
+import LandingPage from "@/pages/landing";
+import LearnPage from "@/pages/learn";
+import ResourcesPage from "@/pages/resources";
+import { LEARN_PAGES } from "@/components/contents/learn-contents";
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/docs" element={<ResourcesPage />} />
+      <Route path="/guides" element={<ResourcesPage />} />
+      <Route path="/blog" element={<ResourcesPage />} />
+      <Route path="/contact" element={<ResourcesPage />} />
+      {LEARN_PAGES.map((page) => (
+        <Route key={page.href} path={page.href} element={<LearnPage />} />
+      ))}
+
       <Route element={<PublicOnly />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/" element={<LandingPage />} />
       </Route>
 
       <Route element={<RequireAuth />}>

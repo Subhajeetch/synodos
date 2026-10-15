@@ -1,12 +1,12 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
+import { Pause, Play } from "lucide-react";
 import {
   AVATAR_STACK,
   COLLABORATORS,
-  IMAGES,
-  IMAGE_SPECS,
   LINKS,
   TEAM,
+  VIDEOS,
 } from "@/components/landing/content";
 import type { Collaborator } from "@/components/landing/content";
 import { AvatarGroup, Button, Container, Section } from "@/components/landing/ui";
@@ -121,13 +121,46 @@ export function TeamSection() {
   const [active, setActive] = useState(0);
   const [cycle, setCycle] = useState(0); // bumps on every selection so the progress bar restarts
   const [paused, setPaused] = useState(false);
+  const [pausedVideos, setPausedVideos] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
+  const previousActive = useRef<number | null>(null);
 
   const select = (index: number) => {
     setActive(index);
     setCycle((c) => c + 1);
   };
   const advance = () => select((active + 1) % count);
+
+  useEffect(() => {
+    const switchedTab = previousActive.current !== active;
+    previousActive.current = active;
+
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return;
+      if (index !== active || pausedVideos.has(index)) {
+        video.pause();
+        return;
+      }
+
+      if (switchedTab) video.currentTime = 0;
+      void video.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Unable to play landing feature video", error);
+      });
+    });
+  }, [active, pausedVideos]);
+
+  const toggleVideoPlayback = () => {
+    setPausedVideos((previous) => {
+      const next = new Set(previous);
+      if (next.has(active)) next.delete(active);
+      else next.add(active);
+      return next;
+    });
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     let next: number;
@@ -265,23 +298,45 @@ export function TeamSection() {
           >
             <div
               className="relative w-full bg-black/[0.03]"
-              style={{ aspectRatio: IMAGE_SPECS.team.ratio }}
+              style={{ aspectRatio: "16 / 9" }}
             >
-              {IMAGES.team.map((src, i) => (
-                <img
-                  key={src}
-                  src={src}
-                  alt={TEAM.tabs[i]?.alt ?? ""}
-                  aria-hidden={i !== active}
-                  width={IMAGE_SPECS.team.width}
-                  height={IMAGE_SPECS.team.height}
-                  loading="lazy"
-                  decoding="async"
-                  className={`absolute inset-0 h-full w-full object-cover motion-safe:transition-opacity motion-safe:duration-500 ${
-                    i === active ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-              ))}
+              {VIDEOS.team.map((src, i) => {
+                const isActive = i === active;
+                const label = TEAM.tabs[i]?.text ?? "Feature";
+                return (
+                  <video
+                    key={src}
+                    ref={(element) => {
+                      videoRefs.current[i] = element;
+                    }}
+                    src={src}
+                    aria-label={label}
+                    aria-hidden={!isActive}
+                    tabIndex={-1}
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className={`absolute inset-0 h-full w-full object-cover motion-safe:transition-opacity motion-safe:duration-500 ${
+                      isActive
+                        ? "lp-team-video-enter opacity-100"
+                        : "pointer-events-none opacity-0"
+                    }`}
+                  />
+                );
+              })}
+              <button
+                type="button"
+                onClick={toggleVideoPlayback}
+                aria-label={`${pausedVideos.has(active) ? "Play" : "Pause"} video`}
+                className="absolute bottom-4 right-4 z-10 grid size-11 place-items-center rounded-full border border-white/50 bg-black/55 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                {pausedVideos.has(active) ? (
+                  <Play aria-hidden="true" className="size-5 fill-current" />
+                ) : (
+                  <Pause aria-hidden="true" className="size-5 fill-current" />
+                )}
+              </button>
             </div>
           </div>
         </div>
