@@ -18,7 +18,7 @@
 
 Synodos is an open-source, real-time collaborative document editor for teams. It provides a fast, shared space where teammates can write, format text, and organize ideas together in the browser. Synodos is built for creators, product squads, and developers who need instant teamwork without distractions.
 
-> **Real-time** means any edit or cursor movement made by a teammate shows up on your screen immediately, without refreshing the page.
+> **Live Demo:** [synodos.pages.dev](https://synodos.pages.dev)
 
 ### What's inside
 
