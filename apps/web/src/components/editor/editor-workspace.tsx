@@ -98,9 +98,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConnectionStatus } from "./connection-status";
-import {
-  showActiveCollaborationCursors,
-} from "./collaboration-cursor";
+import { showActiveCollaborationCursors } from "./collaboration-cursor";
 import "./collaboration-cursor.css";
 import "./editor-document.css";
 import { EditorSidebar } from "./editor-sidebar";
@@ -179,9 +177,7 @@ function applyPaperZoom(
     paperFrame.querySelector<HTMLElement>(".editor-document")?.offsetHeight ??
     1123;
   const horizontalSlack =
-    794 * nextZoom > canvas.clientWidth
-      ? Math.ceil(canvas.clientWidth / 2)
-      : 0;
+    794 * nextZoom > canvas.clientWidth ? Math.ceil(canvas.clientWidth / 2) : 0;
   canvas.style.setProperty("--zoom", String(nextZoom));
   sizer?.style.setProperty("width", `${794 * nextZoom}px`);
   sizer?.style.setProperty("height", `${contentHeight * nextZoom}px`);
@@ -190,10 +186,8 @@ function applyPaperZoom(
   paperFrame.style.transformOrigin = "0 0";
 
   const afterRect = paperFrame.getBoundingClientRect();
-  canvas.scrollLeft +=
-    afterRect.left + anchorOffsetX * nextZoom - anchor.x;
-  canvas.scrollTop +=
-    afterRect.top + anchorOffsetY * nextZoom - anchor.y;
+  canvas.scrollLeft += afterRect.left + anchorOffsetX * nextZoom - anchor.x;
+  canvas.scrollTop += afterRect.top + anchorOffsetY * nextZoom - anchor.y;
 }
 
 function EditorPagesFooter({
@@ -223,7 +217,9 @@ function EditorPagesFooter({
       const ranges = getPageRanges(currentEditor.state.doc);
       const currentRangeIndex = ranges.reduce(
         (activePage, page, index) =>
-          currentEditor.state.selection.anchor >= page.from ? index : activePage,
+          currentEditor.state.selection.anchor >= page.from
+            ? index
+            : activePage,
         0,
       );
       return {
@@ -238,7 +234,7 @@ function EditorPagesFooter({
       (!!a &&
         !!b &&
         a.doc === b.doc &&
-      a.currentPage === b.currentPage &&
+        a.currentPage === b.currentPage &&
         a.pageCount === b.pageCount &&
         a.wordCount === b.wordCount &&
         a.characterCount === b.characterCount),
@@ -254,7 +250,9 @@ function EditorPagesFooter({
 
   useEffect(() => {
     if (zoomPresetsOpen) {
-      zoomPresetMenuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+      zoomPresetMenuRef.current
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus();
     }
   }, [zoomPresetsOpen]);
 
@@ -351,8 +349,8 @@ function EditorPagesFooter({
             if (event.key === "Escape") {
               event.preventDefault();
               setZoomPresetsOpen(false);
-              event.currentTarget
-                .previousElementSibling?.querySelector("button")
+              event.currentTarget.previousElementSibling
+                ?.querySelector("button")
                 ?.focus();
             } else if (
               (event.key === "ArrowDown" || event.key === "ArrowUp") &&
@@ -606,7 +604,8 @@ function EditorPagesFooter({
         )}
         {!compact && (
           <span className="hidden tabular-nums text-xs text-muted-foreground md:inline">
-            {editorState.wordCount} words · {editorState.characterCount} characters
+            {editorState.wordCount} words · {editorState.characterCount}{" "}
+            characters
           </span>
         )}
       </div>
@@ -634,9 +633,12 @@ class EditorWorkspaceErrorBoundary extends Component<
       return (
         <div className="flex h-full items-center justify-center bg-background p-6 text-center">
           <div className="max-w-md space-y-3 rounded-lg border border-border bg-card p-6 shadow-sm">
-            <p className="text-base font-semibold">Something went wrong rendering the editor.</p>
+            <p className="text-base font-semibold">
+              Something went wrong rendering the editor.
+            </p>
             <p className="text-sm text-muted-foreground">
-              Your changes are safe in the collaboration server or the local copy.
+              Your changes are safe in the collaboration server or the local
+              copy.
             </p>
             {new URLSearchParams(window.location.search).has("version") && (
               <p className="break-words font-mono text-xs text-muted-foreground">
@@ -680,7 +682,9 @@ class VersionPreviewErrorBoundary extends Component<
           role="alert"
           className="mx-auto mt-8 max-w-lg rounded-lg border border-destructive/30 bg-background p-4 text-sm shadow"
         >
-          <p className="font-medium">This saved version couldn’t be rendered.</p>
+          <p className="font-medium">
+            This saved version couldn’t be rendered.
+          </p>
           <p className="mt-1 text-muted-foreground">
             The current document is still available and has not been changed.
           </p>
@@ -738,7 +742,7 @@ function VersionPreviewEditor({
 export function EditorWorkspace({ doc }: { doc: DocumentSummary }) {
   return (
     <EditorWorkspaceErrorBoundary>
-      <EditorWorkspaceContent doc={doc} />
+      <EditorWorkspaceContent key={doc.id} doc={doc} />
     </EditorWorkspaceErrorBoundary>
   );
 }
@@ -866,7 +870,12 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
         description: "You are back in the current document.",
       });
     }
-  }, [selectedVersionId, selectVersion, versionQuery.error, versionQuery.isError]);
+  }, [
+    selectedVersionId,
+    selectVersion,
+    versionQuery.error,
+    versionQuery.isError,
+  ]);
 
   useEffect(() => {
     if (!selectedVersionId) return;
@@ -887,23 +896,14 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       }
 
       const delta =
-        event.key === "ArrowLeft"
-          ? 1
-          : event.key === "ArrowRight"
-            ? -1
-            : 0;
+        event.key === "ArrowLeft" ? 1 : event.key === "ArrowRight" ? -1 : 0;
       if (!delta || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       void navigateVersion(delta > 0 ? "older" : "newer");
     }
     window.addEventListener("keydown", handleHistoryKeydown);
     return () => window.removeEventListener("keydown", handleHistoryKeydown);
-  }, [
-    loadedVersions,
-    selectVersion,
-    selectedVersionId,
-    navigateVersion,
-  ]);
+  }, [loadedVersions, selectVersion, selectedVersionId, navigateVersion]);
 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -963,6 +963,9 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
 
   useEffect(() => {
     setZoom(initialZoom);
+    return () => {
+      setZoom(1);
+    };
   }, [initialZoom]);
 
   const { savedLocally, clear } = useOfflinePersistence(
@@ -1069,10 +1072,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       return;
     }
     const documentDeleted = documentDeletedMessageSchema.safeParse(message);
-    if (
-      documentDeleted.success &&
-      documentDeleted.data.documentId === doc.id
-    ) {
+    if (documentDeleted.success && documentDeleted.data.documentId === doc.id) {
       toast.warning("Document deleted", {
         id: `document-deleted-${doc.id}`,
         description: "This document was deleted by its owner.",
@@ -1243,10 +1243,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     previousRequestIds.current = requestIds;
   }, [doc.id, sharing]);
 
-  useEffect(
-    () => () => dismissNotificationScope(doc.id),
-    [doc.id],
-  );
+  useEffect(() => () => dismissNotificationScope(doc.id), [doc.id]);
   useEffect(
     () => () => {
       queryClient.removeQueries({
@@ -1333,7 +1330,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
   }, [editor, pageTitleMap]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !editable || selectedVersionId) return;
 
     const migration = provider.document.getMap<boolean>("editorMigrations");
     function migratePages() {
@@ -1343,6 +1340,12 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       editor.state.doc.forEach((node) => nodes.push(node));
       const existingPages = nodes.filter((node) => node.type.name === "page");
       const looseContent = nodes.filter((node) => node.type.name !== "page");
+
+      // If all nodes are already page nodes, just mark migrated!
+      if (existingPages.length > 0 && looseContent.length === 0) {
+        migration.set("explicitPagesV2", true);
+        return;
+      }
 
       let pageNodes: ProseMirrorNode[];
       if (existingPages.length === 0) {
@@ -1383,13 +1386,15 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     return () => {
       provider.off("synced", migratePages);
     };
-  }, [editor, pageTitleMap, provider]);
+  }, [editor, editable, selectedVersionId, pageTitleMap, provider]);
 
   useEffect(() => {
     const canvas = canvasElement;
     if (!canvas) return;
     const scrollContainer = canvas;
-    const initialPaper = canvas.querySelector<HTMLElement>(".editor-paper-frame");
+    const initialPaper = canvas.querySelector<HTMLElement>(
+      ".editor-paper-frame",
+    );
     if (initialPaper) {
       const rect = canvas.getBoundingClientRect();
       applyPaperZoom(canvas, initialPaper, zoomRef.current, zoomRef.current, {
@@ -1537,7 +1542,11 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     }
     function isExternalInput(target: EventTarget | null) {
       if (!(target instanceof HTMLElement)) return false;
-      if (target.closest('[role="dialog"] input, [role="dialog"] textarea, [role="dialog"] [contenteditable="true"]')) {
+      if (
+        target.closest(
+          '[role="dialog"] input, [role="dialog"] textarea, [role="dialog"] [contenteditable="true"]',
+        )
+      ) {
         return true;
       }
       return (
@@ -1546,18 +1555,23 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
         target instanceof HTMLSelectElement ||
         Boolean(
           target.closest('[contenteditable="true"]') &&
-            !target.closest(".ProseMirror"),
+          !target.closest(".ProseMirror"),
         )
       );
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.code === "Space" && !isTextEntry(event.target) && !event.repeat) {
+      if (
+        event.code === "Space" &&
+        !isTextEntry(event.target) &&
+        !event.repeat
+      ) {
         spacePan = true;
         scrollContainer.classList.add("editor-canvas--hand");
         event.preventDefault();
         return;
       }
-      if (!(event.ctrlKey || event.metaKey) || isExternalInput(event.target)) return;
+      if (!(event.ctrlKey || event.metaKey) || isExternalInput(event.target))
+        return;
       const direction =
         event.key === "+" || event.key === "=" || event.key === "Add"
           ? 1
@@ -1584,6 +1598,12 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       spacePan = false;
       scrollContainer.classList.toggle("editor-canvas--hand", handToolActive);
     }
+    function handleWindowBlur() {
+      spacePan = false;
+      dragging = false;
+      scrollContainer.classList.remove("editor-canvas--dragging");
+      scrollContainer.classList.toggle("editor-canvas--hand", handToolActive);
+    }
     function pointerDown(event: PointerEvent) {
       if (event.button !== 1 && !spacePan && !handToolActive) return;
       dragging = true;
@@ -1608,10 +1628,16 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
         scrollContainer.releasePointerCapture(event.pointerId);
       }
     }
-    const paper = scrollContainer.querySelector<HTMLElement>(".editor-paper-frame");
-    const sizer = scrollContainer.querySelector<HTMLElement>(".editor-canvas__sizer");
+    const paper = scrollContainer.querySelector<HTMLElement>(
+      ".editor-paper-frame",
+    );
+    const sizer = scrollContainer.querySelector<HTMLElement>(
+      ".editor-canvas__sizer",
+    );
     const onViewportResize = () => {
-      const frame = scrollContainer.querySelector<HTMLElement>(".editor-paper-frame");
+      const frame = scrollContainer.querySelector<HTMLElement>(
+        ".editor-paper-frame",
+      );
       if (!frame) return;
       const nextMode = zoomModeRef.current;
       const rect = frame.getBoundingClientRect();
@@ -1621,7 +1647,10 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       const documentY = (oldCenterY - rect.top) / zoomRef.current;
       let nextZoom = zoomRef.current;
       if (nextMode === "fit-width") {
-        nextZoom = Math.min(3, Math.max(0.25, (scrollContainer.clientWidth - 32) / 794));
+        nextZoom = Math.min(
+          3,
+          Math.max(0.25, (scrollContainer.clientWidth - 32) / 794),
+        );
       } else if (nextMode === "fit-page") {
         nextZoom = Math.min(
           3,
@@ -1679,9 +1708,12 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
     canvas.addEventListener("touchend", resetPinch);
     canvas.addEventListener("touchcancel", resetPinch);
     canvas.addEventListener("gesturestart", onGestureStart, { passive: false });
-    canvas.addEventListener("gesturechange", onGestureChange, { passive: false });
+    canvas.addEventListener("gesturechange", onGestureChange, {
+      passive: false,
+    });
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
     canvas.addEventListener("pointerdown", pointerDown);
     canvas.addEventListener("pointermove", pointerMove);
     canvas.addEventListener("pointerup", pointerUp);
@@ -1700,6 +1732,7 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
       canvas.removeEventListener("gesturechange", onGestureChange);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
       canvas.removeEventListener("pointerdown", pointerDown);
       canvas.removeEventListener("pointermove", pointerMove);
       canvas.removeEventListener("pointerup", pointerUp);
@@ -1716,7 +1749,9 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
   ) {
     const clampedZoom = clampZoom(nextZoom);
     const canvas = canvasNodeRef.current;
-    const paperFrame = canvas?.querySelector<HTMLElement>(".editor-paper-frame");
+    const paperFrame = canvas?.querySelector<HTMLElement>(
+      ".editor-paper-frame",
+    );
     if (canvas && paperFrame) {
       const bounds = canvas.getBoundingClientRect();
       applyPaperZoom(canvas, paperFrame, zoomRef.current, clampedZoom, {
@@ -1752,7 +1787,8 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
         },
         onError: (error) => {
           toast.error(
-            error instanceof ApiError && error.code === "COLLABORATION_UNAVAILABLE"
+            error instanceof ApiError &&
+              error.code === "COLLABORATION_UNAVAILABLE"
               ? "The collaboration service is unavailable. The document was not confirmed as restored."
               : error instanceof ApiError && error.code === "DOCUMENT_CHANGED"
                 ? "The document changed while restore was starting. Review the live document, then try restoring again."
@@ -1909,8 +1945,9 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
                 </TooltipTrigger>
                 {memberLimitReached && (
                   <TooltipContent>
-                    Maximum of {MAX_DOCUMENT_MEMBERS} collaborators per document,
-                    including the owner and pending invitations or requests.
+                    Maximum of {MAX_DOCUMENT_MEMBERS} collaborators per
+                    document, including the owner and pending invitations or
+                    requests.
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -1969,20 +2006,31 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
             )}
             {selectedVersionId && versionQuery.isPending && (
               <div className="absolute inset-x-0 top-16 z-20 flex justify-center">
-                <div role="status" className="rounded-lg border bg-background p-3 text-sm shadow">
-                  <Loader2 className="mr-2 inline size-4 animate-spin" aria-hidden="true" />
+                <div
+                  role="status"
+                  className="rounded-lg border bg-background p-3 text-sm shadow"
+                >
+                  <Loader2
+                    className="mr-2 inline size-4 animate-spin"
+                    aria-hidden="true"
+                  />
                   Loading saved version…
                 </div>
               </div>
             )}
             {selectedVersionId &&
               (previewSnapshot?.error || versionQuery.isError) &&
-              !(versionQuery.error instanceof ApiError && versionQuery.error.status === 404) && (
+              !(
+                versionQuery.error instanceof ApiError &&
+                versionQuery.error.status === 404
+              ) && (
                 <div
                   role="alert"
                   className="absolute inset-x-4 top-16 z-20 mx-auto max-w-lg rounded-lg border border-destructive/30 bg-background p-4 text-sm shadow"
                 >
-                  <p className="font-medium">This version could not be previewed.</p>
+                  <p className="font-medium">
+                    This version could not be previewed.
+                  </p>
                   <p className="mt-1 text-muted-foreground">
                     {previewSnapshot?.error?.message ??
                       (versionQuery.error instanceof Error
@@ -2003,31 +2051,38 @@ function EditorWorkspaceContent({ doc }: { doc: DocumentSummary }) {
                   </div>
                 </div>
               )}
-            {selectedVersionId && versionQuery.data && !previewSnapshot?.error && (
-              <VersionPreviewPanel
-                version={versionQuery.data}
-                role={doc.role}
-                position={versionQuery.data.position}
-                total={versionQuery.data.total}
-                canOlder={versionQuery.data.position < versionQuery.data.total}
-                canNewer={versionQuery.data.position > 1}
-                loadingDirection={
-                  !versionQuery.isError &&
-                  versionNavigation &&
-                  (versionNavigation.targetVersionId === null ||
-                    (versionNavigation.targetVersionId === selectedVersionId &&
-                      previewEditor?.versionId !== selectedVersionId))
-                    ? versionNavigation.direction
-                    : null
-                }
-                activeCollaborators={users.filter((user) => !user.isYou).length}
-                onPrevious={() => void navigateVersion("older")}
-                onNext={() => void navigateVersion("newer")}
-                onBack={() => selectVersion(null)}
-                onRestore={handleRestoreVersion}
-                restoring={restoreVersion.isPending}
-              />
-            )}
+            {selectedVersionId &&
+              versionQuery.data &&
+              !previewSnapshot?.error && (
+                <VersionPreviewPanel
+                  version={versionQuery.data}
+                  role={doc.role}
+                  position={versionQuery.data.position}
+                  total={versionQuery.data.total}
+                  canOlder={
+                    versionQuery.data.position < versionQuery.data.total
+                  }
+                  canNewer={versionQuery.data.position > 1}
+                  loadingDirection={
+                    !versionQuery.isError &&
+                    versionNavigation &&
+                    (versionNavigation.targetVersionId === null ||
+                      (versionNavigation.targetVersionId ===
+                        selectedVersionId &&
+                        previewEditor?.versionId !== selectedVersionId))
+                      ? versionNavigation.direction
+                      : null
+                  }
+                  activeCollaborators={
+                    users.filter((user) => !user.isYou).length
+                  }
+                  onPrevious={() => void navigateVersion("older")}
+                  onNext={() => void navigateVersion("newer")}
+                  onBack={() => selectVersion(null)}
+                  onRestore={handleRestoreVersion}
+                  restoring={restoreVersion.isPending}
+                />
+              )}
             <div className="editor-canvas__stage">
               <div
                 className="editor-canvas__sizer"

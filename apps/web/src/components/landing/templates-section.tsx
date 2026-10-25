@@ -3,7 +3,10 @@ import { Container, DemoImage, Reveal, Section } from "@/components/landing/ui";
 
 export function TemplatesSection() {
   return (
-    <Section labelledBy="lp-templates-title" pad="pb-12 pt-20 md:pb-16 md:pt-28 lg:pt-36">
+    <Section
+      labelledBy="lp-templates-title"
+      pad="pb-12 pt-20 md:pb-16 md:pt-28 lg:pt-36"
+    >
       <Container>
         <h2 id="lp-templates-title" className="lp-display lp-h2 text-center">
           {TEMPLATES.title}
@@ -11,10 +14,21 @@ export function TemplatesSection() {
 
         <ul className="mt-14 grid gap-12 md:grid-cols-3 md:gap-8">
           {TEMPLATES.items.map((item) => (
-            <li key={item.title} className="flex flex-col items-center text-center">
-              <item.icon aria-hidden="true" className="size-6" strokeWidth={1.5} />
-              <h3 className="mt-4 text-[17px] font-semibold tracking-tight">{item.title}</h3>
-              <p className="lp-muted mt-2 max-w-[240px] text-sm leading-relaxed">{item.body}</p>
+            <li
+              key={item.title}
+              className="flex flex-col items-center text-center"
+            >
+              <item.icon
+                aria-hidden="true"
+                className="size-6"
+                strokeWidth={1.5}
+              />
+              <h3 className="mt-4 text-[17px] font-semibold tracking-tight">
+                {item.title}
+              </h3>
+              <p className="lp-muted mt-2 max-w-[240px] text-sm leading-relaxed">
+                {item.body}
+              </p>
             </li>
           ))}
         </ul>

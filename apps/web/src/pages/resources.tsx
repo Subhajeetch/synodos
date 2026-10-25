@@ -10,7 +10,12 @@ import {
   Mail,
 } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { CONTACT_CONTENT, DOCS_CONTENT, BLOG_CONTENT, GUIDES_CONTENT } from "@/components/contents/docs-contents";
+import {
+  CONTACT_CONTENT,
+  DOCS_CONTENT,
+  BLOG_CONTENT,
+  GUIDES_CONTENT,
+} from "@/components/contents/docs-contents";
 import type { ResourceSection } from "@/components/contents/docs-contents";
 import { LINKS } from "@/components/landing/content";
 import { SiteHeader } from "@/components/site-header";
@@ -18,11 +23,20 @@ import "./resources.css";
 
 type ResourceKind = "docs" | "guides" | "blog" | "contact";
 
-const RESOURCE_META: Record<ResourceKind, { title: string; description: string }> = {
+const RESOURCE_META: Record<
+  ResourceKind,
+  { title: string; description: string }
+> = {
   docs: { title: DOCS_CONTENT.title, description: DOCS_CONTENT.description },
-  guides: { title: GUIDES_CONTENT.title, description: GUIDES_CONTENT.description },
+  guides: {
+    title: GUIDES_CONTENT.title,
+    description: GUIDES_CONTENT.description,
+  },
   blog: { title: BLOG_CONTENT.title, description: BLOG_CONTENT.description },
-  contact: { title: CONTACT_CONTENT.title, description: CONTACT_CONTENT.description },
+  contact: {
+    title: CONTACT_CONTENT.title,
+    description: CONTACT_CONTENT.description,
+  },
 };
 
 function getKind(pathname: string): ResourceKind {
@@ -32,12 +46,20 @@ function getKind(pathname: string): ResourceKind {
   return "docs";
 }
 
-function updateMeta(attribute: "name" | "property", key: string, content: string) {
-  const existing = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
+function updateMeta(
+  attribute: "name" | "property",
+  key: string,
+  content: string,
+) {
+  const existing = document.head.querySelector<HTMLMetaElement>(
+    `meta[${attribute}="${key}"]`,
+  );
   if (existing) {
     const previous = existing.content;
     existing.content = content;
-    return () => { existing.content = previous; };
+    return () => {
+      existing.content = previous;
+    };
   }
   const element = document.createElement("meta");
   element.setAttribute(attribute, key);
@@ -77,14 +99,20 @@ function DocsContent() {
 
         for (const section of sections) {
           const element = document.getElementById(section.id);
-          if (element && element.getBoundingClientRect().top <= activationLine) {
+          if (
+            element &&
+            element.getBoundingClientRect().top <= activationLine
+          ) {
             currentSection = section.id;
           } else {
             break;
           }
         }
 
-        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        if (
+          window.innerHeight + window.scrollY >=
+          document.documentElement.scrollHeight - 2
+        ) {
           currentSection = sections.at(-1)?.id ?? currentSection;
         }
         setActiveSection(currentSection);
@@ -103,15 +131,22 @@ function DocsContent() {
 
   return (
     <div className="resource-docs-layout">
-      <aside className="resource-docs-sidebar" aria-label="Documentation contents">
-        <div className="resource-sidebar-label"><BookOpen aria-hidden="true" size={16} /> In this guide</div>
+      <aside
+        className="resource-docs-sidebar"
+        aria-label="Documentation contents"
+      >
+        <div className="resource-sidebar-label">
+          <BookOpen aria-hidden="true" size={16} /> In this guide
+        </div>
         <nav>
           {sections.map((section) => (
             <a
               key={section.id}
               href={`#${section.id}`}
               className={activeSection === section.id ? "resource-current" : ""}
-              aria-current={activeSection === section.id ? "location" : undefined}
+              aria-current={
+                activeSection === section.id ? "location" : undefined
+              }
             >
               {section.title}
             </a>
@@ -119,18 +154,32 @@ function DocsContent() {
         </nav>
         <div className="resource-sidebar-help">
           <span>Need a hand?</span>
-          <Link to={LINKS.contact}>Contact the project <ArrowRight aria-hidden="true" size={14} /></Link>
+          <Link to={LINKS.contact}>
+            Contact the project <ArrowRight aria-hidden="true" size={14} />
+          </Link>
         </div>
       </aside>
       <div className="resource-docs-article">
         {sections.map((section) => (
-          <section className="resource-doc-section" id={section.id} key={section.id}>
+          <section
+            className="resource-doc-section"
+            id={section.id}
+            key={section.id}
+          >
             <p className="resource-section-kicker">Synodos basics</p>
             <h2>{section.title}</h2>
-            <p className="resource-section-description">{section.description}</p>
-            {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <p className="resource-section-description">
+              {section.description}
+            </p>
+            {section.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
             {section.bullets && (
-              <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>
+              <ul>
+                {section.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
             )}
           </section>
         ))}
@@ -139,7 +188,9 @@ function DocsContent() {
             <strong>Still have a question?</strong>
             <p>Get in touch or browse the source repository.</p>
           </div>
-          <Link to={LINKS.contact}>Contact us <ArrowRight aria-hidden="true" size={15} /></Link>
+          <Link to={LINKS.contact}>
+            Contact us <ArrowRight aria-hidden="true" size={15} />
+          </Link>
         </div>
       </div>
     </div>
@@ -153,11 +204,17 @@ function GuidesContent() {
         <article className="resource-guide-card" key={guide.title}>
           <div className="resource-card-topline">
             <span>{guide.category}</span>
-            <span className="resource-card-number">{String(index + 1).padStart(2, "0")}</span>
+            <span className="resource-card-number">
+              {String(index + 1).padStart(2, "0")}
+            </span>
           </div>
           <h2>{guide.title}</h2>
           <p>{guide.description}</p>
-          <ol>{guide.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+          <ol>
+            {guide.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
         </article>
       ))}
     </div>
@@ -183,33 +240,63 @@ function ContactContent() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
-      setCopyError("Could not copy automatically. Select and copy the email address instead.");
+      setCopyError(
+        "Could not copy automatically. Select and copy the email address instead.",
+      );
     }
   };
 
   return (
     <div className="resource-contact-grid">
       <section className="resource-contact-card resource-contact-email">
-        <span className="resource-contact-icon"><Mail aria-hidden="true" size={19} /></span>
+        <span className="resource-contact-icon">
+          <Mail aria-hidden="true" size={19} />
+        </span>
         <p className="resource-card-topline">EMAIL</p>
         <h2>Send a note</h2>
-        <p>For feedback, questions, or a bug report, email the project maintainer.</p>
+        <p>
+          For feedback, questions, or a bug report, email the project
+          maintainer.
+        </p>
         <div className="resource-email-row">
-          <a href={`mailto:${CONTACT_CONTENT.email}`}>{CONTACT_CONTENT.email}</a>
-          <button type="button" onClick={() => void copyEmail()} aria-label="Copy email address" title="Copy email address">
-            {copied ? <Check aria-hidden="true" size={17} /> : <Copy aria-hidden="true" size={17} />}
+          <a href={`mailto:${CONTACT_CONTENT.email}`}>
+            {CONTACT_CONTENT.email}
+          </a>
+          <button
+            type="button"
+            onClick={() => void copyEmail()}
+            aria-label="Copy email address"
+            title="Copy email address"
+          >
+            {copied ? (
+              <Check aria-hidden="true" size={17} />
+            ) : (
+              <Copy aria-hidden="true" size={17} />
+            )}
             <span>{copied ? "Copied" : "Copy"}</span>
           </button>
         </div>
-        {copyError && <p className="resource-copy-error" role="status">{copyError}</p>}
+        {copyError && (
+          <p className="resource-copy-error" role="status">
+            {copyError}
+          </p>
+        )}
       </section>
       <section className="resource-contact-card">
-        <span className="resource-contact-icon"><ExternalLink aria-hidden="true" size={19} /></span>
+        <span className="resource-contact-icon">
+          <ExternalLink aria-hidden="true" size={19} />
+        </span>
         <p className="resource-card-topline">OPEN SOURCE</p>
         <h2>Visit the project</h2>
         <p>Explore the code, report an issue, or follow the work on GitHub.</p>
-        <a className="resource-github-link" href={CONTACT_CONTENT.github} target="_blank" rel="noreferrer">
-          github.com/Subhajeetch/synodos <ArrowUpRight aria-hidden="true" size={16} />
+        <a
+          className="resource-github-link"
+          href={CONTACT_CONTENT.github}
+          target="_blank"
+          rel="noreferrer"
+        >
+          github.com/Subhajeetch/synodos{" "}
+          <ArrowUpRight aria-hidden="true" size={16} />
         </a>
       </section>
       <p className="resource-contact-note">{CONTACT_CONTENT.note}</p>
@@ -226,7 +313,9 @@ export default function ResourcesPage() {
     const title = `${meta.title} | Synodos`;
     const canonical = new URL(pathname, window.location.origin).href;
     const previousTitle = document.title;
-    const existingCanonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const existingCanonical = document.head.querySelector<HTMLLinkElement>(
+      'link[rel="canonical"]',
+    );
     const previousCanonical = existingCanonical?.href;
     const cleanups = [
       updateMeta("name", "description", meta.description),
@@ -247,7 +336,8 @@ export default function ResourcesPage() {
     return () => {
       document.title = previousTitle;
       for (const cleanup of cleanups.reverse()) cleanup();
-      if (previousCanonical && canonicalLink) canonicalLink.href = previousCanonical;
+      if (previousCanonical && canonicalLink)
+        canonicalLink.href = previousCanonical;
       else canonicalLink?.remove();
     };
   }, [meta, pathname]);
@@ -257,7 +347,9 @@ export default function ResourcesPage() {
       <SiteHeader />
       <main className={`resource-main resource-main-${kind}`}>
         <div className="resource-breadcrumb">
-          <Link to={LINKS.home}>Home</Link><ChevronRight aria-hidden="true" size={14} /><span>{meta.title}</span>
+          <Link to={LINKS.home}>Home</Link>
+          <ChevronRight aria-hidden="true" size={14} />
+          <span>{meta.title}</span>
         </div>
         <ResourceIntro kind={kind} />
         {kind === "docs" && <DocsContent />}
@@ -271,7 +363,9 @@ export default function ResourcesPage() {
           <Link to={LINKS.documentation}>Documentation</Link>
           <Link to={LINKS.guides}>Guides</Link>
           <Link to={LINKS.blog}>Blog</Link>
-          <a href={CONTACT_CONTENT.github} target="_blank" rel="noreferrer">GitHub <ExternalLink aria-hidden="true" size={13} /></a>
+          <a href={CONTACT_CONTENT.github} target="_blank" rel="noreferrer">
+            GitHub <ExternalLink aria-hidden="true" size={13} />
+          </a>
         </div>
       </footer>
     </div>

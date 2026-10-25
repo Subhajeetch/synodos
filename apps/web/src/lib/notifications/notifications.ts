@@ -85,7 +85,10 @@ function removeVisibilityListener() {
 
 function flushEvents() {
   flushTimer = null;
-  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+  if (
+    typeof document !== "undefined" &&
+    document.visibilityState === "hidden"
+  ) {
     if (!visibilityListener) {
       visibilityListener = () => {
         if (document.visibilityState !== "visible") return;
@@ -205,7 +208,10 @@ function enqueue(event: PersonEvent) {
   const now = Date.now();
   if (groupStartedAt === 0) groupStartedAt = now;
   if (flushTimer) clearTimeout(flushTimer);
-  const remainingMaxWait = Math.max(0, MAX_COALESCE_MS - (now - groupStartedAt));
+  const remainingMaxWait = Math.max(
+    0,
+    MAX_COALESCE_MS - (now - groupStartedAt),
+  );
   flushTimer = setTimeout(
     () => {
       groupStartedAt = 0;
@@ -285,12 +291,14 @@ export function notifyPresenceChange(
     if (leavingIndex >= 0) pendingEvents.splice(leavingIndex, 1);
   }
   if (!online) {
-    if (pendingEvents.some(
-      (item) =>
-        item.scope === scope &&
-        personKey(item.person) === personKey(person) &&
-        item.online === true,
-    )) {
+    if (
+      pendingEvents.some(
+        (item) =>
+          item.scope === scope &&
+          personKey(item.person) === personKey(person) &&
+          item.online === true,
+      )
+    ) {
       pendingEvents.splice(
         0,
         pendingEvents.length,
@@ -315,7 +323,10 @@ export function notifyPresenceChange(
   enqueue(event);
 }
 
-export function notifyMemberJoined(person: NotificationPerson, scope = "global") {
+export function notifyMemberJoined(
+  person: NotificationPerson,
+  scope = "global",
+) {
   const name = person.name || person.email;
   enqueue({
     person,
@@ -328,7 +339,10 @@ export function notifyMemberJoined(person: NotificationPerson, scope = "global")
   });
 }
 
-export function notifyAccessRequest(person: NotificationPerson, scope = "global") {
+export function notifyAccessRequest(
+  person: NotificationPerson,
+  scope = "global",
+) {
   enqueue({
     person,
     title: "Access requested",

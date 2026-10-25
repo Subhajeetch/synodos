@@ -115,9 +115,12 @@ export function LoginForm({ mode }: LoginFormProps) {
                   : "Login to Synodos"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isSignup ? "Already have an account? " : "Don't have an account? "}
+              {isSignup
+                ? "Already have an account? "
+                : "Don't have an account? "}
               <Link
                 to={isSignup ? "/login" : "/signup"}
+                state={location.state}
                 className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
               >
                 {isSignup ? "Sign in" : "Sign up"}
@@ -224,7 +227,6 @@ export function LoginForm({ mode }: LoginFormProps) {
               </Button>
             </div>
           </div>
-
         </div>
       </section>
     </main>

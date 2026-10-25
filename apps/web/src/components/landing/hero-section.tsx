@@ -1,10 +1,18 @@
 import { HERO, LINKS } from "@/components/landing/content";
-import { Button, CollabCursor, Container, Highlight } from "@/components/landing/ui";
+import {
+  Button,
+  CollabCursor,
+  Container,
+  Highlight,
+} from "@/components/landing/ui";
 
 export function HeroSection() {
   const { cursors } = HERO;
   return (
-    <section aria-labelledby="lp-hero-title" className="pb-16 pt-16 text-center md:pb-24 md:pt-24">
+    <section
+      aria-labelledby="lp-hero-title"
+      className="pb-16 pt-16 text-center md:pb-24 md:pt-24"
+    >
       <Container>
         <h1 id="lp-hero-title" className="lp-display lp-h1">
           <span className="relative inline-block">
@@ -41,7 +49,12 @@ export function HeroSection() {
         </p>
 
         <div className="mt-8">
-          <Button size="lg" chevron href={LINKS.login} className="w-full sm:w-auto">
+          <Button
+            size="lg"
+            chevron
+            href={LINKS.login}
+            className="w-full sm:w-auto"
+          >
             {HERO.cta}
           </Button>
         </div>

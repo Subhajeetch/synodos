@@ -28,9 +28,12 @@ import { api } from "@/lib/api";
 function getInitials(name?: string | null, email?: string | null) {
   const source = name?.trim() || email?.trim() || "?";
   const parts = source.split(/\s+/).filter(Boolean);
-  return parts.length > 1
-    ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-    : source.slice(0, 2).toUpperCase();
+  if (parts.length > 1) {
+    const first = Array.from(parts[0] ?? "")[0] ?? "";
+    const second = Array.from(parts[1] ?? "")[0] ?? "";
+    return `${first}${second}`.toUpperCase();
+  }
+  return Array.from(source).slice(0, 2).join("").toUpperCase();
 }
 
 function hasControlCharacters(value: string) {
@@ -48,8 +51,12 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 mb-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile & Settings</h1>
-        <p className="text-muted-foreground">Manage your account preferences and notifications</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          Profile & Settings
+        </h1>
+        <p className="text-muted-foreground">
+          Manage your account preferences and notifications
+        </p>
       </div>
 
       <section className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 shadow-sm">
@@ -73,7 +80,9 @@ export default function ProfilePage() {
               <h2 className="truncate text-2xl font-bold tracking-tight text-foreground">
                 {user?.name ?? "Your profile"}
               </h2>
-              <p className="truncate text-sm font-medium text-muted-foreground">{user?.email}</p>
+              <p className="truncate text-sm font-medium text-muted-foreground">
+                {user?.email}
+              </p>
             </div>
           </div>
         </div>
@@ -110,12 +119,17 @@ export default function ProfilePage() {
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Email Address
               </span>
-              <span className="text-sm font-medium text-foreground">{user?.email ?? "Not set"}</span>
+              <span className="text-sm font-medium text-foreground">
+                {user?.email ?? "Not set"}
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card id="notifications" className="rounded-xl border-border/50 bg-card/40 shadow-sm transition-all hover:border-border/80 hover:shadow-md">
+        <Card
+          id="notifications"
+          className="rounded-xl border-border/50 bg-card/40 shadow-sm transition-all hover:border-border/80 hover:shadow-md"
+        >
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2.5 text-lg font-semibold">
               <Bell className="size-5 text-primary" /> Notifications
@@ -128,7 +142,9 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1 text-sm">
                 <p className="font-medium text-foreground">Email Updates</p>
-                <p className="text-muted-foreground">Receive emails for document invitations and access changes.</p>
+                <p className="text-muted-foreground">
+                  Receive emails for document invitations and access changes.
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-4 rounded-lg border border-border/40 bg-background/50 p-4 transition-colors hover:bg-muted/50">
@@ -137,7 +153,9 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1 text-sm">
                 <p className="font-medium text-foreground">Security Notices</p>
-                <p className="text-muted-foreground">Alerts for new sign-ins and critical account changes.</p>
+                <p className="text-muted-foreground">
+                  Alerts for new sign-ins and critical account changes.
+                </p>
               </div>
             </div>
           </CardContent>
@@ -254,7 +272,10 @@ function EditDisplayNameDialog({
               disabled={!hasChanges || updateName.isPending}
             >
               {updateName.isPending && (
-                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-4 animate-spin"
+                />
               )}
               {updateName.isPending ? "Updating…" : "Update"}
             </Button>

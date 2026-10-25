@@ -15,7 +15,9 @@ function setDocumentContent(
   paragraph.insert(0, [xmlText]);
   document.getXmlFragment("default").insert(0, [paragraph]);
   document.getMap<string>("pageMetadata").set("root", title);
-  document.getMap<boolean>("editorMigrations").set("explicitPagesV2", migrationValue);
+  document
+    .getMap<boolean>("editorMigrations")
+    .set("explicitPagesV2", migrationValue);
 }
 
 function firstParagraphText(document: Y.Doc) {
@@ -35,12 +37,46 @@ test("restore replaces content and document metadata from an isolated Y.Doc", ()
   replaceDocumentState(live, snapshot);
 
   assert.equal(firstParagraphText(live), "restored text");
-  assert.equal(live.getMap<string>("pageMetadata").get("root"), "Restored title");
+  assert.equal(
+    live.getMap<string>("pageMetadata").get("root"),
+    "Restored title",
+  );
   assert.equal(
     live.getMap<boolean>("editorMigrations").get("explicitPagesV2"),
     false,
   );
   assert.equal(firstParagraphText(snapshot), "restored text");
+  live.destroy();
+  snapshot.destroy();
+});
+
+test("restore replaces content when snapshot is created solely from binary update without prior type access", () => {
+  const original = new Y.Doc();
+  setDocumentContent(
+    original,
+    "snapshot text from binary",
+    "Binary title",
+    true,
+  );
+  const binaryState = Y.encodeStateAsUpdate(original);
+  original.destroy();
+
+  const live = new Y.Doc();
+  setDocumentContent(live, "initial live text", "Live title", false);
+
+  const snapshot = new Y.Doc();
+  Y.applyUpdate(snapshot, binaryState);
+
+  // Directly call replaceDocumentState without accessing snapshot shared types first
+  replaceDocumentState(live, snapshot);
+
+  assert.equal(firstParagraphText(live), "snapshot text from binary");
+  assert.equal(live.getMap<string>("pageMetadata").get("root"), "Binary title");
+  assert.equal(
+    live.getMap<boolean>("editorMigrations").get("explicitPagesV2"),
+    true,
+  );
+
   live.destroy();
   snapshot.destroy();
 });

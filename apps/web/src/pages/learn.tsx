@@ -11,13 +11,20 @@ import {
 import { Link, useLocation } from "react-router";
 import { LINKS } from "@/components/landing/content";
 import { DOCS_NAV, LEARN_PAGES } from "@/components/contents/learn-contents";
-import type { DocsNavGroup, DocsPage } from "@/components/contents/learn-contents";
+import type {
+  DocsNavGroup,
+  DocsPage,
+} from "@/components/contents/learn-contents";
 import { SiteHeader } from "@/components/site-header";
 import "./learn.css";
 
 const NAV_ITEMS = DOCS_NAV.flatMap((group) => group.items);
 
-function updateMetaTag(attribute: "name" | "property", key: string, content: string) {
+function updateMetaTag(
+  attribute: "name" | "property",
+  key: string,
+  content: string,
+) {
   const existing = document.head.querySelector<HTMLMetaElement>(
     `meta[${attribute}="${key}"]`,
   );
@@ -37,7 +44,9 @@ function updateMetaTag(attribute: "name" | "property", key: string, content: str
 }
 
 function updateCanonical(href: string) {
-  const existing = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  const existing = document.head.querySelector<HTMLLinkElement>(
+    'link[rel="canonical"]',
+  );
   if (existing) {
     const previousHref = existing.href;
     existing.href = href;
@@ -54,7 +63,10 @@ function updateCanonical(href: string) {
 }
 
 function headingId(title: string) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 function SidebarGroup({
@@ -103,11 +115,16 @@ function PageContent({ page }: { page: DocsPage }) {
   const related = page.related
     .map((href) => NAV_ITEMS.find((item) => item.href === href))
     .filter((item): item is (typeof NAV_ITEMS)[number] => Boolean(item))
-    .filter((item, index, items) => items.findIndex((candidate) => candidate.href === item.href) === index);
+    .filter(
+      (item, index, items) =>
+        items.findIndex((candidate) => candidate.href === item.href) === index,
+    );
 
   const copyPageLink = async () => {
     if (!navigator.clipboard?.writeText) {
-      setCopyMessage("Copy is unavailable in this browser. Copy the page URL from the address bar.");
+      setCopyMessage(
+        "Copy is unavailable in this browser. Copy the page URL from the address bar.",
+      );
       return;
     }
 
@@ -115,7 +132,9 @@ function PageContent({ page }: { page: DocsPage }) {
       await navigator.clipboard.writeText(window.location.href);
       setCopyMessage("Page link copied.");
     } catch {
-      setCopyMessage("Unable to copy the link. Copy the page URL from the address bar.");
+      setCopyMessage(
+        "Unable to copy the link. Copy the page URL from the address bar.",
+      );
     }
   };
 
@@ -133,13 +152,19 @@ function PageContent({ page }: { page: DocsPage }) {
           <p className="learn-lede">{page.description}</p>
         </div>
         <div className="learn-copy-control">
-          <button type="button" className="learn-copy-button" onClick={() => void copyPageLink()}>
+          <button
+            type="button"
+            className="learn-copy-button"
+            onClick={() => void copyPageLink()}
+          >
             {copyMessage === "Page link copied." ? (
               <Check aria-hidden="true" size={16} />
             ) : (
               <Copy aria-hidden="true" size={16} />
             )}
-            <span>{copyMessage === "Page link copied." ? "Copied" : "Copy page"}</span>
+            <span>
+              {copyMessage === "Page link copied." ? "Copied" : "Copy page"}
+            </span>
           </button>
           {copyMessage && <span role="status">{copyMessage}</span>}
         </div>
@@ -147,12 +172,20 @@ function PageContent({ page }: { page: DocsPage }) {
 
       <div className="learn-article">
         {page.sections.map((section) => (
-          <section id={headingId(section.title)} key={section.title} className="learn-article-section">
+          <section
+            id={headingId(section.title)}
+            key={section.title}
+            className="learn-article-section"
+          >
             <h2>{section.title}</h2>
-            {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            {section.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
             {section.bullets && (
               <ul>
-                {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                {section.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
               </ul>
             )}
           </section>
@@ -187,7 +220,8 @@ export default function LearnPage() {
 
   useEffect(() => {
     const title = page ? `${page.title} | Synodos` : "Page not found | Synodos";
-    const description = page?.description ??
+    const description =
+      page?.description ??
       "Explore Synodos documentation for real-time collaborative writing, shared documents, and team workflows.";
     const cleanups = [
       updateMetaTag("name", "description", description),
@@ -196,7 +230,10 @@ export default function LearnPage() {
       updateMetaTag("property", "og:url", window.location.href),
       updateMetaTag("name", "twitter:title", title),
       updateMetaTag("name", "twitter:description", description),
-      updateCanonical(new URL(page?.href ?? window.location.pathname, window.location.origin).href),
+      updateCanonical(
+        new URL(page?.href ?? window.location.pathname, window.location.origin)
+          .href,
+      ),
     ];
     const previousTitle = document.title;
     document.title = title;
@@ -240,13 +277,23 @@ export default function LearnPage() {
                 query={query}
               />
             ))}
-            {query.trim() && NAV_ITEMS.every((item) => !item.label.toLowerCase().includes(query.trim().toLowerCase())) && (
-              <p className="learn-no-results">No pages match “{query.trim()}”.</p>
-            )}
+            {query.trim() &&
+              NAV_ITEMS.every(
+                (item) =>
+                  !item.label
+                    .toLowerCase()
+                    .includes(query.trim().toLowerCase()),
+              ) && (
+                <p className="learn-no-results">
+                  No pages match “{query.trim()}”.
+                </p>
+              )}
           </nav>
           <div className="learn-sidebar-note">
             <span>Writing is better together.</span>
-            <Link to={LINKS.tryFree}>Open Synodos <ArrowUpRight aria-hidden="true" size={14} /></Link>
+            <Link to={LINKS.tryFree}>
+              Open Synodos <ArrowUpRight aria-hidden="true" size={14} />
+            </Link>
           </div>
         </aside>
 
@@ -257,8 +304,14 @@ export default function LearnPage() {
             <div className="learn-not-found">
               <p className="learn-eyebrow">Page not found</p>
               <h1>We couldn’t find that page.</h1>
-              <p>Choose a topic from the documentation navigation to keep exploring Synodos.</p>
-              <Link to={LINKS.documentation}>Go to the documentation <ChevronRight aria-hidden="true" size={16} /></Link>
+              <p>
+                Choose a topic from the documentation navigation to keep
+                exploring Synodos.
+              </p>
+              <Link to={LINKS.documentation}>
+                Go to the documentation{" "}
+                <ChevronRight aria-hidden="true" size={16} />
+              </Link>
             </div>
           )}
         </main>
@@ -268,7 +321,11 @@ export default function LearnPage() {
             <h2>On this page</h2>
             <nav>
               {sections.map((section, index) => (
-                <a key={section.title} href={`#${headingId(section.title)}`} className={index === 0 ? "learn-toc-current" : ""}>
+                <a
+                  key={section.title}
+                  href={`#${headingId(section.title)}`}
+                  className={index === 0 ? "learn-toc-current" : ""}
+                >
                   {section.title}
                 </a>
               ))}
@@ -276,7 +333,8 @@ export default function LearnPage() {
             <div className="learn-toc-footer">
               <p>Made for teams who write together.</p>
               <a href={LINKS.github} target="_blank" rel="noreferrer">
-                View project on GitHub <ExternalLink aria-hidden="true" size={14} />
+                View project on GitHub{" "}
+                <ExternalLink aria-hidden="true" size={14} />
               </a>
             </div>
           </aside>

@@ -105,7 +105,9 @@ export function VersionHistoryPanel({
             setLabelTarget(null);
           },
           onError: (error) =>
-            toast.error(error instanceof Error ? error.message : "Rename failed"),
+            toast.error(
+              error instanceof Error ? error.message : "Rename failed",
+            ),
         },
       );
       return;
@@ -117,7 +119,9 @@ export function VersionHistoryPanel({
         onSelectVersion(version.id);
       },
       onError: (error) =>
-        toast.error(error instanceof Error ? error.message : "Checkpoint failed"),
+        toast.error(
+          error instanceof Error ? error.message : "Checkpoint failed",
+        ),
     });
   }
 
@@ -209,75 +213,80 @@ export function VersionHistoryPanel({
                 </h4>
                 <ol className="space-y-2">
                   {group.items.map((version) => {
-              const authorName = version.author.name || "Synodos system";
-              const selected = version.id === selectedVersionId;
-              return (
-                <li
-                  key={version.id}
-                  className={`flex items-start gap-2 rounded-lg border p-2 transition-colors motion-reduce:transition-none ${
-                    selected
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border/50 bg-background/70 hover:bg-muted/50"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSelectVersion(version.id)}
-                    aria-pressed={selected}
-                    className="flex min-w-0 flex-1 items-start gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <Avatar className="mt-0.5 size-7 shrink-0">
-                      {version.author.image && (
-                        <AvatarImage
-                          src={version.author.image}
-                          alt=""
-                          referrerPolicy="no-referrer"
-                        />
-                      )}
-                      <AvatarFallback className="text-[10px]">
-                        {authorName.trim().charAt(0).toUpperCase() || "S"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="min-w-0 flex-1 space-y-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate text-xs font-medium">
-                          {version.label ?? authorName}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 px-1.5 py-0 text-[9px] capitalize"
-                        >
-                          {versionKindLabel(version.kind)}
-                        </Badge>
-                      </span>
-                      <span className="block truncate text-[10px] text-muted-foreground">
-                        {version.label
-                          ? `${authorName} · ${version.contributorCount} contributor${version.contributorCount === 1 ? "" : "s"}`
-                          : `${authorName} · ${versionKindLabel(version.kind)} · ${version.contributorCount} contributor${version.contributorCount === 1 ? "" : "s"}`}
-                      </span>
-                      <time
-                        className="block text-[10px] text-muted-foreground"
-                        dateTime={version.createdAt}
-                        title={new Date(version.createdAt).toLocaleString()}
+                    const authorName = version.author.name || "Synodos system";
+                    const selected = version.id === selectedVersionId;
+                    return (
+                      <li
+                        key={version.id}
+                        className={`flex items-start gap-2 rounded-lg border p-2 transition-colors motion-reduce:transition-none ${
+                          selected
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border/50 bg-background/70 hover:bg-muted/50"
+                        }`}
                       >
-                        {timeAgo(version.createdAt)}
-                      </time>
-                    </span>
-                  </button>
-                  {canCreate && (
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      className="shrink-0 text-muted-foreground"
-                      aria-label={`Rename version from ${new Date(version.createdAt).toLocaleString()}`}
-                      title="Rename version"
-                      onClick={() => openRename(version)}
-                    >
-                      <PencilLine className="size-3.5" aria-hidden="true" />
-                    </Button>
-                  )}
-                </li>
-              );
+                        <button
+                          type="button"
+                          onClick={() => onSelectVersion(version.id)}
+                          aria-pressed={selected}
+                          className="flex min-w-0 flex-1 items-start gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          <Avatar className="mt-0.5 size-7 shrink-0">
+                            {version.author.image && (
+                              <AvatarImage
+                                src={version.author.image}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
+                            <AvatarFallback className="text-[10px]">
+                              {authorName.trim().charAt(0).toUpperCase() || "S"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0 flex-1 space-y-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-xs font-medium">
+                                {version.label ?? authorName}
+                              </span>
+                              <Badge
+                                variant="secondary"
+                                className="shrink-0 px-1.5 py-0 text-[9px] capitalize"
+                              >
+                                {versionKindLabel(version.kind)}
+                              </Badge>
+                            </span>
+                            <span className="block truncate text-[10px] text-muted-foreground">
+                              {version.label
+                                ? `${authorName} · ${version.contributorCount} contributor${version.contributorCount === 1 ? "" : "s"}`
+                                : `${authorName} · ${versionKindLabel(version.kind)} · ${version.contributorCount} contributor${version.contributorCount === 1 ? "" : "s"}`}
+                            </span>
+                            <time
+                              className="block text-[10px] text-muted-foreground"
+                              dateTime={version.createdAt}
+                              title={new Date(
+                                version.createdAt,
+                              ).toLocaleString()}
+                            >
+                              {timeAgo(version.createdAt)}
+                            </time>
+                          </span>
+                        </button>
+                        {canCreate && (
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            className="shrink-0 text-muted-foreground"
+                            aria-label={`Rename version from ${new Date(version.createdAt).toLocaleString()}`}
+                            title="Rename version"
+                            onClick={() => openRename(version)}
+                          >
+                            <PencilLine
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        )}
+                      </li>
+                    );
                   })}
                 </ol>
               </section>
@@ -298,7 +307,10 @@ export function VersionHistoryPanel({
             </Button>
           )}
           {history.isFetchNextPageError && (
-            <div className="flex items-center justify-between gap-2 text-xs text-destructive" role="alert">
+            <div
+              className="flex items-center justify-between gap-2 text-xs text-destructive"
+              role="alert"
+            >
               <span>More versions could not be loaded.</span>
               <Button
                 size="sm"
@@ -348,10 +360,7 @@ export function VersionHistoryPanel({
             >
               Cancel
             </Button>
-            <Button
-              onClick={saveLabel}
-              disabled={!label.trim() || busy}
-            >
+            <Button onClick={saveLabel} disabled={!label.trim() || busy}>
               {busy && <Loader2 className="size-4 animate-spin" />}
               {labelTarget?.id ? "Save name" : "Create checkpoint"}
             </Button>

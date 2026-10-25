@@ -56,9 +56,10 @@ export function VersionPreviewPanel({
   const canRestore = canRestoreVersions(role);
   const author = version.author.name || "Synodos system";
   const timestamp = new Date(version.createdAt).toLocaleString();
-  const kind = version.kind === "pre_restore"
-    ? "Before restore"
-    : version.kind.replace("_", " ");
+  const kind =
+    version.kind === "pre_restore"
+      ? "Before restore"
+      : version.kind.replace("_", " ");
 
   return (
     <>
@@ -106,7 +107,11 @@ export function VersionPreviewPanel({
             size="sm"
             onClick={onPrevious}
             disabled={!canOlder || loadingDirection !== null}
-            aria-label={loadingDirection === "older" ? "Loading older version" : "View older version"}
+            aria-label={
+              loadingDirection === "older"
+                ? "Loading older version"
+                : "View older version"
+            }
             aria-busy={loadingDirection === "older"}
           >
             {loadingDirection === "older" ? (
@@ -121,7 +126,11 @@ export function VersionPreviewPanel({
             size="sm"
             onClick={onNext}
             disabled={!canNewer || loadingDirection !== null}
-            aria-label={loadingDirection === "newer" ? "Loading newer version" : "View newer version"}
+            aria-label={
+              loadingDirection === "newer"
+                ? "Loading newer version"
+                : "View newer version"
+            }
             aria-busy={loadingDirection === "newer"}
           >
             {loadingDirection === "newer" && (
@@ -159,8 +168,9 @@ export function VersionPreviewPanel({
               from {timestamp} by {author}. Your current version will be saved
               first so you can undo this.
               {activeCollaborators > 0 &&
-                ` ${activeCollaborators} collaborator${activeCollaborators === 1 ? " is" : "s are"} currently active.`}
-              {" "}People with offline edits may merge those edits when they reconnect.
+                ` ${activeCollaborators} collaborator${activeCollaborators === 1 ? " is" : "s are"} currently active.`}{" "}
+              People with offline edits may merge those edits when they
+              reconnect.
             </DialogDescription>
           </DialogHeader>
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
@@ -176,10 +186,7 @@ export function VersionPreviewPanel({
             >
               Cancel
             </Button>
-            <Button
-              onClick={onRestore}
-              disabled={restoring}
-            >
+            <Button onClick={onRestore} disabled={restoring}>
               {restoring ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : (

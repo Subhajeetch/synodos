@@ -147,9 +147,7 @@ export function NotificationsDialog({
                     >
                       <span
                         className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                          notification.readAt
-                            ? "bg-transparent"
-                            : "bg-primary"
+                          notification.readAt ? "bg-transparent" : "bg-primary"
                         }`}
                         aria-hidden="true"
                       />

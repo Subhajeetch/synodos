@@ -1,7 +1,7 @@
-import joinUrl from '@/assets/join.wav?url';
-import leaveUrl from '@/assets/leave.wav?url';
+import joinUrl from "@/assets/join.wav?url";
+import leaveUrl from "@/assets/leave.wav?url";
 
-export type SoundId = 'join' | 'leave';
+export type SoundId = "join" | "leave";
 
 type SoundAssetMap = Record<SoundId, string>;
 
@@ -29,22 +29,28 @@ let unlockHandler: (() => void) | null = null;
 let visibilityHandler: (() => void) | null = null;
 
 function getAudioContextConstructor() {
-  if (typeof window === 'undefined') return null;
-  return window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? null;
+  if (typeof window === "undefined") return null;
+  return (
+    window.AudioContext ??
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext ??
+    null
+  );
 }
 
 function ensureAudioGraph() {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   const AudioCtor = getAudioContextConstructor();
   if (!AudioCtor) return null;
   if (!audioContext) {
     try {
-      audioContext = new AudioCtor({ latencyHint: 'interactive' });
+      audioContext = new AudioCtor({ latencyHint: "interactive" });
       masterGain = audioContext.createGain();
       masterGain.gain.value = 1;
       masterGain.connect(audioContext.destination);
     } catch (error) {
-      if (import.meta.env.DEV) console.warn('[sound-engine] Web Audio unavailable', error);
+      if (import.meta.env.DEV)
+        console.warn("[sound-engine] Web Audio unavailable", error);
       audioContext = null;
       masterGain = null;
       return null;
@@ -52,15 +58,20 @@ function ensureAudioGraph() {
   }
   if (!visibilityBound) {
     visibilityHandler = () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== "visible") return;
       const context = audioContext;
-      if (context && (context.state === 'suspended' || (context.state as string) === 'interrupted')) {
+      if (
+        context &&
+        (context.state === "suspended" ||
+          (context.state as string) === "interrupted")
+      ) {
         void context.resume().catch((error: unknown) => {
-          if (import.meta.env.DEV) console.warn('[sound-engine] resume failed', error);
+          if (import.meta.env.DEV)
+            console.warn("[sound-engine] resume failed", error);
         });
       }
     };
-    document.addEventListener('visibilitychange', visibilityHandler);
+    document.addEventListener("visibilitychange", visibilityHandler);
     visibilityBound = true;
   }
   return audioContext;
@@ -88,7 +99,8 @@ function ensureAudioBuffer(soundId: SoundId): Promise<AudioBuffer | null> {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const response = await fetch(SOUND_ASSETS[soundId]);
-        if (!response.ok) throw new Error(`Failed to fetch sound: ${response.status}`);
+        if (!response.ok)
+          throw new Error(`Failed to fetch sound: ${response.status}`);
         const arrayBuffer = await response.arrayBuffer();
         const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
         bufferCache.set(soundId, decoded);
@@ -96,23 +108,25 @@ function ensureAudioBuffer(soundId: SoundId): Promise<AudioBuffer | null> {
       } catch (error) {
         lastError = error;
         if (attempt < 2) {
-          await new Promise((resolve) => window.setTimeout(resolve, 200 * 2 ** attempt));
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, 200 * 2 ** attempt),
+          );
         }
       }
     }
-    if (import.meta.env.DEV) console.warn('[sound-engine] preload failed', soundId, lastError);
+    if (import.meta.env.DEV)
+      console.warn("[sound-engine] preload failed", soundId, lastError);
     return null;
-  })()
-    .finally(() => {
-      inFlight.delete(soundId);
-    });
+  })().finally(() => {
+    inFlight.delete(soundId);
+  });
 
   inFlight.set(soundId, request);
   return request;
 }
 
 function bindUnlock() {
-  if (unlockBound || typeof window === 'undefined') return;
+  if (unlockBound || typeof window === "undefined") return;
   unlockBound = true;
   unlockHandler = () => {
     const ctx = ensureAudioGraph();
@@ -131,33 +145,34 @@ function bindUnlock() {
       source.start();
       source.onended = () => source.disconnect();
     } catch (error) {
-      if (import.meta.env.DEV) console.warn('[sound-engine] unlock failed', error);
+      if (import.meta.env.DEV)
+        console.warn("[sound-engine] unlock failed", error);
     }
     removeUnlockListeners();
   };
 
-  window.addEventListener('pointerdown', unlockHandler);
-  window.addEventListener('keydown', unlockHandler);
-  window.addEventListener('touchend', unlockHandler);
+  window.addEventListener("pointerdown", unlockHandler);
+  window.addEventListener("keydown", unlockHandler);
+  window.addEventListener("touchend", unlockHandler);
 }
 
 function removeUnlockListeners() {
-  if (typeof window === 'undefined' || !unlockHandler) return;
-  window.removeEventListener('pointerdown', unlockHandler);
-  window.removeEventListener('keydown', unlockHandler);
-  window.removeEventListener('touchend', unlockHandler);
+  if (typeof window === "undefined" || !unlockHandler) return;
+  window.removeEventListener("pointerdown", unlockHandler);
+  window.removeEventListener("keydown", unlockHandler);
+  window.removeEventListener("touchend", unlockHandler);
   unlockHandler = null;
   unlockBound = false;
 }
 
 export async function preloadSounds(ids: SoundId[] = Array.from(allSounds)) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   if (!getAudioContextConstructor() || !ensureAudioGraph()) {
     for (const id of ids) {
       const pool = getFallbackPool(id);
-      if (pool.length === 0 && typeof Audio !== 'undefined') {
+      if (pool.length === 0 && typeof Audio !== "undefined") {
         const audio = new Audio(SOUND_ASSETS[id]);
-        audio.preload = 'auto';
+        audio.preload = "auto";
         pool.push(audio);
       }
     }
@@ -168,9 +183,12 @@ export async function preloadSounds(ids: SoundId[] = Array.from(allSounds)) {
 }
 
 export function scheduleSoundPreload() {
-  if (typeof window === 'undefined') return () => undefined;
+  if (typeof window === "undefined") return () => undefined;
   const idleWindow = window as Window & {
-    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+    requestIdleCallback?: (
+      callback: () => void,
+      options?: { timeout: number },
+    ) => number;
     cancelIdleCallback?: (id: number) => void;
   };
   let timeout: number | null = null;
@@ -188,7 +206,7 @@ export function scheduleSoundPreload() {
 }
 
 function isFallbackAvailable() {
-  return typeof HTMLAudioElement !== 'undefined';
+  return typeof HTMLAudioElement !== "undefined";
 }
 
 function fallbackPlay(soundId: SoundId, volume: number) {
@@ -198,16 +216,20 @@ function fallbackPlay(soundId: SoundId, volume: number) {
     .filter((node) => !node.paused && !node.ended).length;
   if (activeFallbackVoices >= MAX_CONCURRENT_VOICES) return;
   const pool = getFallbackPool(soundId);
-  const audio = pool.find((node) => node.paused || node.ended) ?? new Audio(SOUND_ASSETS[soundId]);
-  audio.preload = 'auto';
+  const audio =
+    pool.find((node) => node.paused || node.ended) ??
+    new Audio(SOUND_ASSETS[soundId]);
+  audio.preload = "auto";
   audio.volume = Math.min(1, Math.max(0, volume));
   try {
     audio.currentTime = 0;
     void audio.play().catch((error: unknown) => {
-      if (import.meta.env.DEV) console.warn('[sound-engine] fallback playback failed', soundId, error);
+      if (import.meta.env.DEV)
+        console.warn("[sound-engine] fallback playback failed", soundId, error);
     });
   } catch (error) {
-    if (import.meta.env.DEV) console.warn('[sound-engine] fallback playback failed', soundId, error);
+    if (import.meta.env.DEV)
+      console.warn("[sound-engine] fallback playback failed", soundId, error);
   }
   if (!pool.includes(audio)) {
     pool.push(audio);
@@ -215,10 +237,11 @@ function fallbackPlay(soundId: SoundId, volume: number) {
 }
 
 export function playSound(soundId: SoundId, volume = DEFAULT_VOLUME) {
-  if (typeof window === 'undefined') return Promise.resolve();
+  if (typeof window === "undefined") return Promise.resolve();
   const now = Date.now();
   const previous = lastPlayedAt.get(soundId);
-  if (previous !== undefined && now - previous < RATE_LIMIT_MS) return Promise.resolve();
+  if (previous !== undefined && now - previous < RATE_LIMIT_MS)
+    return Promise.resolve();
 
   const ctx = ensureAudioGraph();
   if (!ctx || !masterGain) {
@@ -227,7 +250,7 @@ export function playSound(soundId: SoundId, volume = DEFAULT_VOLUME) {
     return Promise.resolve();
   }
 
-  if (ctx.state !== 'running') {
+  if (ctx.state !== "running") {
     bindUnlock();
     return Promise.resolve();
   }
@@ -243,7 +266,7 @@ export function playSound(soundId: SoundId, volume = DEFAULT_VOLUME) {
       if (
         !buffer ||
         audioContext !== ctx ||
-        ctx.state !== 'running' ||
+        ctx.state !== "running" ||
         !masterGain ||
         concurrentVoices >= MAX_CONCURRENT_VOICES
       ) {
@@ -288,10 +311,7 @@ function startBufferSound(
       startAt + attackDuration,
     );
     gain.gain.setValueAtTime(Math.max(0.001, safeVolume), releaseAt);
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      startAt + buffer.duration,
-    );
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + buffer.duration);
     source.buffer = buffer;
     source.connect(gain);
     gain.connect(output);
@@ -309,7 +329,8 @@ function startBufferSound(
     if (voiceReserved) {
       concurrentVoices = Math.max(0, concurrentVoices - 1);
     }
-    if (import.meta.env.DEV) console.warn('[sound-engine] playback failed', soundId, error);
+    if (import.meta.env.DEV)
+      console.warn("[sound-engine] playback failed", soundId, error);
   }
 }
 
@@ -322,8 +343,8 @@ if (import.meta.hot) {
     audioContext?.close().catch(() => undefined);
     audioContext = null;
     masterGain = null;
-    if (typeof document !== 'undefined' && visibilityHandler) {
-      document.removeEventListener('visibilitychange', visibilityHandler);
+    if (typeof document !== "undefined" && visibilityHandler) {
+      document.removeEventListener("visibilitychange", visibilityHandler);
       visibilityHandler = null;
       visibilityBound = false;
     }
@@ -349,14 +370,10 @@ export function resetSoundEngine() {
     audioContext = null;
     masterGain = null;
   }
-  if (typeof document !== 'undefined' && visibilityHandler) {
-    document.removeEventListener('visibilitychange', visibilityHandler);
+  if (typeof document !== "undefined" && visibilityHandler) {
+    document.removeEventListener("visibilitychange", visibilityHandler);
     visibilityHandler = null;
     visibilityBound = false;
   }
   removeUnlockListeners();
-}
-
-export function playPresenceSound(online: boolean) {
-  return playSound(online ? 'join' : 'leave');
 }

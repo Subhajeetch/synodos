@@ -130,10 +130,16 @@ function markdownBlock(node: JSONContent, depth = 0): string {
 
   switch (node.type) {
     case "doc":
-      return children.map((child) => markdownBlock(child)).filter(Boolean).join("\n\n");
+      return children
+        .map((child) => markdownBlock(child))
+        .filter(Boolean)
+        .join("\n\n");
     case "page": {
       const title = String(node.attrs?.title ?? "").trim();
-      const content = children.map((child) => markdownBlock(child)).filter(Boolean).join("\n\n");
+      const content = children
+        .map((child) => markdownBlock(child))
+        .filter(Boolean)
+        .join("\n\n");
       return [title ? `# ${title}` : "", content].filter(Boolean).join("\n\n");
     }
     case "paragraph":
@@ -179,7 +185,9 @@ function markdownBlock(node: JSONContent, depth = 0): string {
       return children
         .map((row, index) => {
           const cells = (row.content ?? []).map((cell) =>
-            inlineMarkdown(cell.content),
+            inlineMarkdown(cell.content)
+              .replaceAll("|", "\\|")
+              .replaceAll("\n", "<br>"),
           );
           const line = `| ${cells.join(" | ")} |`;
           return index === 0
@@ -213,7 +221,9 @@ function plainText(node: JSONContent): string {
     node.type === "taskItem" ||
     node.type === "tableRow"
   ) {
-    return rendered.filter(Boolean).join(node.type === "tableRow" ? "\t" : "\n");
+    return rendered
+      .filter(Boolean)
+      .join(node.type === "tableRow" ? "\t" : "\n");
   }
 
   if (node.type === "image") return String(node.attrs?.alt ?? "");
@@ -269,14 +279,19 @@ function downloadFile(filename: string, content: string, mimeType: string) {
 function printAsPdf(title: string, content: string) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    throw new Error("The print window was blocked. Allow pop-ups and try again.");
+    throw new Error(
+      "The print window was blocked. Allow pop-ups and try again.",
+    );
   }
 
   printWindow.document.open();
   printWindow.document.write(buildExportHtml(title, content));
   printWindow.document.close();
-  window.setTimeout(() => {
-    if (printWindow.closed) return;
+
+  let printed = false;
+  const triggerPrint = () => {
+    if (printed || printWindow.closed) return;
+    printed = true;
     try {
       printWindow.focus();
       printWindow.print();
@@ -284,7 +299,27 @@ function printAsPdf(title: string, content: string) {
       console.error("Could not open the PDF print dialog:", error);
       toast.error("Could not open the print dialog. Please try again.");
     }
-  }, 300);
+  };
+
+  const images = Array.from(printWindow.document.images);
+  const pendingImages = images.filter((img) => !img.complete);
+
+  if (pendingImages.length === 0) {
+    window.setTimeout(triggerPrint, 300);
+  } else {
+    let remaining = pendingImages.length;
+    const onImageDone = () => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.setTimeout(triggerPrint, 100);
+      }
+    };
+    for (const img of pendingImages) {
+      img.addEventListener("load", onImageDone, { once: true });
+      img.addEventListener("error", onImageDone, { once: true });
+    }
+    window.setTimeout(triggerPrint, 3000);
+  }
 }
 
 export function DocumentExportDialog({
@@ -470,11 +505,7 @@ export function DocumentExportDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleExport}
-              disabled={!editor}
-            >
+            <Button type="button" onClick={handleExport} disabled={!editor}>
               <Download className="size-4" />
               Download
             </Button>

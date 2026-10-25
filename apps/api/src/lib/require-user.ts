@@ -10,7 +10,10 @@ declare module "fastify" {
   }
 }
 
-export async function requireUser(request: FastifyRequest, reply: FastifyReply) {
+export async function requireUser(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(request.headers),
   });

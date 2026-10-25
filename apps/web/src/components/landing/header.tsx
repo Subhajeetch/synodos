@@ -30,7 +30,8 @@ function DesktopGroup({
         if (e.pointerType === "mouse") onOpenChange(false);
       }}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onOpenChange(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          onOpenChange(false);
       }}
     >
       <button
@@ -85,14 +86,18 @@ export function Header() {
   useEffect(() => {
     if (!openGroup) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenGroup(null);
+      if (navRef.current && !navRef.current.contains(e.target as Node))
+        setOpenGroup(null);
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       const nav = navRef.current;
-      const trigger = nav?.querySelector<HTMLButtonElement>('button[aria-expanded="true"]');
+      const trigger = nav?.querySelector<HTMLButtonElement>(
+        'button[aria-expanded="true"]',
+      );
       // Hand focus back to the trigger if it was inside the menu.
-      if (nav && document.activeElement && nav.contains(document.activeElement)) trigger?.focus();
+      if (nav && document.activeElement && nav.contains(document.activeElement))
+        trigger?.focus();
       setOpenGroup(null);
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -141,14 +146,20 @@ export function Header() {
               <Logo className="mx-auto h-6 w-auto text-[color:var(--lp-fg)] [--logo-background:#F8F8F8]" />
             </a>
 
-            <nav ref={navRef} aria-label="Main" className="ml-4 hidden items-center lg:flex">
+            <nav
+              ref={navRef}
+              aria-label="Main"
+              className="ml-4 hidden items-center lg:flex"
+            >
               {NAV.map((entry) =>
                 "items" in entry ? (
                   <DesktopGroup
                     key={entry.label}
                     group={entry}
                     open={openGroup === entry.label}
-                    onOpenChange={(open) => setOpenGroup(open ? entry.label : null)}
+                    onOpenChange={(open) =>
+                      setOpenGroup(open ? entry.label : null)
+                    }
                   />
                 ) : (
                   <a key={entry.label} href={entry.href} className={NAV_BUTTON}>
@@ -180,7 +191,11 @@ export function Header() {
             onClick={() => setMobileOpen((open) => !open)}
             className="-mr-2.5 grid size-11 place-items-center rounded-lg lg:hidden"
           >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            {mobileOpen ? (
+              <X className="size-5" />
+            ) : (
+              <Menu className="size-5" />
+            )}
           </button>
         </Container>
       </header>
@@ -216,7 +231,10 @@ export function Header() {
                 const open = mobileGroup === entry.label;
                 const panelId = `lp-mobile-${slug(entry.label)}`;
                 return (
-                  <div key={entry.label} className="border-b border-[color:var(--lp-border)]">
+                  <div
+                    key={entry.label}
+                    className="border-b border-[color:var(--lp-border)]"
+                  >
                     <button
                       type="button"
                       aria-expanded={open}
@@ -232,10 +250,17 @@ export function Header() {
                     </button>
                     <div
                       className={`grid motion-safe:transition-[grid-template-rows,opacity] motion-safe:duration-400 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
-                        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                        open
+                          ? "grid-rows-[1fr] opacity-100"
+                          : "grid-rows-[0fr] opacity-0"
                       }`}
                     >
-                      <ul id={panelId} aria-hidden={!open} inert={!open} className="min-h-0 overflow-hidden pb-3">
+                      <ul
+                        id={panelId}
+                        aria-hidden={!open}
+                        inert={!open}
+                        className="min-h-0 overflow-hidden pb-3"
+                      >
                         {entry.items.map((item) => (
                           <li key={item.label}>
                             <a
@@ -254,10 +279,22 @@ export function Header() {
               })}
             </nav>
             <div className="mt-8 grid gap-3">
-              <Button variant="secondary" size="lg" href={LINKS.login} onClick={closeMobile} className="w-full">
+              <Button
+                variant="secondary"
+                size="lg"
+                href={LINKS.login}
+                onClick={closeMobile}
+                className="w-full"
+              >
                 {HEADER.login}
               </Button>
-              <Button size="lg" chevron href={LINKS.tryFree} onClick={closeMobile} className="w-full">
+              <Button
+                size="lg"
+                chevron
+                href={LINKS.tryFree}
+                onClick={closeMobile}
+                className="w-full"
+              >
                 {HEADER.cta}
               </Button>
             </div>

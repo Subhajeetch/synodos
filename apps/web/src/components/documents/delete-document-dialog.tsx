@@ -25,9 +25,8 @@ export function DeleteDocumentDialog({ doc, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Delete “{doc.title}”?</DialogTitle>
           <DialogDescription>
-            This permanently deletes the document for everyone it's shared
-            with, including its content and version history. This can't be
-            undone.
+            This permanently deletes the document for everyone it's shared with,
+            including its content and version history. This can't be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

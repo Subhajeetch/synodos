@@ -9,7 +9,12 @@ import {
   VIDEOS,
 } from "@/components/landing/content";
 import type { Collaborator } from "@/components/landing/content";
-import { AvatarGroup, Button, Container, Section } from "@/components/landing/ui";
+import {
+  AvatarGroup,
+  Button,
+  Container,
+  Section,
+} from "@/components/landing/ui";
 
 /* ----- Decorative collaborator pills ----- */
 
@@ -52,7 +57,8 @@ function CollabPill({ person }: { person: Collaborator }) {
 function pillRow(start: number, row: number, length = 5): Collaborator[] {
   const people: Collaborator[] = [];
   for (let k = 0; k < length; k += 1) {
-    const person = COLLABORATORS[(start + row * length + k) % COLLABORATORS.length];
+    const person =
+      COLLABORATORS[(start + row * length + k) % COLLABORATORS.length];
     if (person) people.push(person);
   }
   return people;
@@ -62,7 +68,13 @@ const LEFT_ROW_OFFSETS = ["mr-0", "mr-10", "mr-4"] as const;
 const RIGHT_ROW_OFFSETS = ["ml-0", "ml-10", "ml-4"] as const;
 
 /** md+: three staggered rows hugging a viewport edge, cropped by it. */
-function PillCluster({ side, start }: { side: "left" | "right"; start: number }) {
+function PillCluster({
+  side,
+  start,
+}: {
+  side: "left" | "right";
+  start: number;
+}) {
   const isLeft = side === "left";
   const offsets = isLeft ? LEFT_ROW_OFFSETS : RIGHT_ROW_OFFSETS;
   return (
@@ -101,7 +113,10 @@ function MarqueeRow({
   const style = { "--lp-dur": `${seconds}s` } as CSSProperties;
   return (
     <div aria-hidden="true" className="overflow-hidden md:hidden">
-      <div className={`lp-marquee flex w-max ${reverse ? "lp-marquee--rev" : ""}`} style={style}>
+      <div
+        className={`lp-marquee flex w-max ${reverse ? "lp-marquee--rev" : ""}`}
+        style={style}
+      >
         {[0, 1].map((copy) => (
           <div key={copy} className="flex shrink-0 gap-2 pr-2">
             {people.map((person) => (
@@ -147,7 +162,8 @@ export function TeamSection() {
 
       if (switchedTab) video.currentTime = 0;
       void video.play().catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
         console.error("Unable to play landing feature video", error);
       });
     });
@@ -193,7 +209,10 @@ export function TeamSection() {
   } as CSSProperties;
 
   return (
-    <Section labelledBy="lp-team-title" pad="pb-24 pt-8 md:pb-32 md:pt-16 lg:pb-40">
+    <Section
+      labelledBy="lp-team-title"
+      pad="pb-24 pt-8 md:pb-32 md:pt-16 lg:pb-40"
+    >
       <PillCluster side="left" start={0} />
       <PillCluster side="right" start={6} />
 
@@ -270,7 +289,11 @@ export function TeamSection() {
                       : "text-[color:var(--lp-muted)] hover:text-[color:var(--lp-fg)]"
                   }`}
                 >
-                  <tab.icon aria-hidden="true" className="size-6 shrink-0" strokeWidth={1.5} />
+                  <tab.icon
+                    aria-hidden="true"
+                    className="size-6 shrink-0"
+                    strokeWidth={1.5}
+                  />
                   <span className="max-w-[260px]">{tab.text}</span>
                   <span
                     aria-hidden="true"

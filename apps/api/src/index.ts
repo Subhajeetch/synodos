@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth";
 import { env } from "./env";
@@ -9,7 +10,12 @@ import { notificationRoutes } from "./routes/notifications";
 import { userRoutes } from "./routes/users";
 import { versionRoutes } from "./routes/versions";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, trustProxy: true });
+
+await app.register(rateLimit, {
+  max: 100,
+  timeWindow: "1 minute",
+});
 
 const allowedOrigins = Array.from(
   new Set([env.WEB_ORIGIN, "http://localhost:5173", "http://127.0.0.1:5173"]),
@@ -25,7 +31,9 @@ await app.register(cors, {
 
 app.setErrorHandler((err, request, reply) => {
   if (err instanceof z.ZodError) {
-    return reply.code(400).send({ error: "Invalid request", issues: err.issues });
+    return reply
+      .code(400)
+      .send({ error: "Invalid request", issues: err.issues });
   }
   request.log.error(err);
   const status = (err as { statusCode?: number }).statusCode ?? 500;
@@ -39,14 +47,19 @@ await app.register(notificationRoutes, { prefix: "/api" });
 await app.register(userRoutes, { prefix: "/api" });
 await app.register(versionRoutes, { prefix: "/api" });
 
-
 app.get("/health", async () => ({ status: "ok" }));
 
 app.route({
   method: ["GET", "POST"],
   url: "/api/auth/*",
   async handler(request, reply) {
-    const url = new URL(request.url, `http://${request.headers.host}`);
+    const proto =
+      (request.headers["x-forwarded-proto"] as string) ||
+      request.protocol ||
+      "http";
+    const host =
+      (request.headers["x-forwarded-host"] as string) || request.headers.host;
+    const url = new URL(request.url, `${proto}://${host}`);
     const req = new Request(url, {
       method: request.method,
       headers: fromNodeHeaders(request.headers),

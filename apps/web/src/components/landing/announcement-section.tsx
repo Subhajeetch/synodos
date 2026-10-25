@@ -1,4 +1,10 @@
-import { ANNOUNCE, APP_NAME, IMAGES, IMAGE_SPECS, LINKS } from "@/components/landing/content";
+import {
+  ANNOUNCE,
+  APP_NAME,
+  IMAGES,
+  IMAGE_SPECS,
+  LINKS,
+} from "@/components/landing/content";
 import {
   Button,
   DemoImage,
@@ -18,18 +24,21 @@ export function AnnouncementSection() {
               gradient is zoomed from the bottom-left so its baked-in corner
               falls outside the card. */}
           <div className="absolute inset-0 overflow-hidden rounded-3xl">
-            <GradientBackdrop
-              src={IMAGES.gradients.announce}
-              imgClassName=""
-            />
+            <GradientBackdrop src={IMAGES.gradients.announce} imgClassName="" />
           </div>
 
           <div className="relative z-10 p-6 sm:p-8 md:w-[46%] md:p-12">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/70 py-1 pl-1.5 pr-3 text-sm font-semibold backdrop-blur">
-              <img src="/synodos-logo-short.webp" className="w-6 h-6 rounded-[6px]" />
+              <img
+                src="/synodos-logo-short.webp"
+                className="w-6 h-6 rounded-[6px]"
+              />
               {APP_NAME}
             </span>
-            <h2 id="lp-announce-title" className="mt-5 text-xl font-semibold tracking-tight sm:text-2xl">
+            <h2
+              id="lp-announce-title"
+              className="mt-5 text-xl font-semibold tracking-tight sm:text-2xl"
+            >
               {ANNOUNCE.title}
             </h2>
             <p className="mt-3 max-w-[420px] text-[15px] leading-relaxed text-[#45455A]">
@@ -39,7 +48,12 @@ export function AnnouncementSection() {
               <Button size="md" chevron href={LINKS.seeHow}>
                 {ANNOUNCE.primary}
               </Button>
-              <Button variant="secondary" size="md" chevron href={LINKS.readDocs}>
+              <Button
+                variant="secondary"
+                size="md"
+                chevron
+                href={LINKS.readDocs}
+              >
                 {ANNOUNCE.secondary}
               </Button>
             </div>

@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe('sound engine', () => {
+describe("sound engine", () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
-  it('drops playback when the AudioContext is suspended', async () => {
+  it("drops playback when the AudioContext is suspended", async () => {
     const resume = vi.fn().mockResolvedValue(undefined);
     const source = {
       buffer: null,
@@ -24,27 +24,32 @@ describe('sound engine', () => {
     };
 
     class FakeAudioContext {
-      public state = 'suspended';
+      public state = "suspended";
       public destination = {};
       public createBufferSource = vi.fn(() => source);
       public createGain = vi.fn(() => gain);
-      public createBuffer = vi.fn(() => ({ getChannelData: () => new Float32Array(1) }));
+      public createBuffer = vi.fn(() => ({
+        getChannelData: () => new Float32Array(1),
+      }));
       public resume = resume;
       public close = vi.fn().mockResolvedValue(undefined);
     }
 
-    vi.stubGlobal('AudioContext', FakeAudioContext as unknown as typeof AudioContext);
     vi.stubGlobal(
-      'fetch',
+      "AudioContext",
+      FakeAudioContext as unknown as typeof AudioContext,
+    );
+    vi.stubGlobal(
+      "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
         arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
       }),
     );
     vi.stubGlobal(
-      'HTMLAudioElement',
+      "HTMLAudioElement",
       class {
-        public preload = 'auto';
+        public preload = "auto";
         public volume = 0;
         public currentTime = 0;
         public paused = true;
@@ -53,8 +58,8 @@ describe('sound engine', () => {
       },
     );
 
-    const { playSound } = await import('./sound-engine');
-    await expect(playSound('join')).resolves.toBeUndefined();
+    const { playSound } = await import("./sound-engine");
+    await expect(playSound("join")).resolves.toBeUndefined();
     expect(resume).not.toHaveBeenCalled();
   });
 
@@ -89,7 +94,10 @@ describe('sound engine', () => {
       ok: true,
       arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
     });
-    vi.stubGlobal("AudioContext", FakeAudioContext as unknown as typeof AudioContext);
+    vi.stubGlobal(
+      "AudioContext",
+      FakeAudioContext as unknown as typeof AudioContext,
+    );
     vi.stubGlobal("fetch", fetchMock);
     vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
 

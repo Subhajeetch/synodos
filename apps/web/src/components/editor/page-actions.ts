@@ -92,10 +92,7 @@ export function addPageAfter(editor: Editor, pageIndex: number) {
     transaction.setSelection(
       TextSelection.near(transaction.doc.resolve(page.to + 2)),
     );
-    return dispatchPageTransaction(
-      editor,
-      transaction.scrollIntoView(),
-    );
+    return dispatchPageTransaction(editor, transaction.scrollIntoView());
   });
 }
 

@@ -59,13 +59,11 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .values({ title: body.title, ownerId: request.user.id })
         .returning();
       if (!created) throw new Error("Failed to create document");
-      await tx
-        .insert(documentMembers)
-        .values({
-          documentId: created.id,
-          userId: request.user.id,
-          role: "owner",
-        });
+      await tx.insert(documentMembers).values({
+        documentId: created.id,
+        userId: request.user.id,
+        role: "owner",
+      });
       return created;
     });
 
@@ -234,12 +232,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .code(404)
         .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
     if (!canManageMembers(role)) {
-      return reply
-        .code(403)
-        .send({
-          error: "Only the document owner can manage sharing",
-          code: "OWNER_REQUIRED",
-        });
+      return reply.code(403).send({
+        error: "Only the document owner can manage sharing",
+        code: "OWNER_REQUIRED",
+      });
     }
 
     const [invitations, requests] = await Promise.all([
@@ -386,44 +382,34 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     });
 
     if (result.status === "member") {
-      return reply
-        .code(409)
-        .send({
-          error: "You already have access to this document",
-          code: "ALREADY_A_MEMBER",
-        });
+      return reply.code(409).send({
+        error: "You already have access to this document",
+        code: "ALREADY_A_MEMBER",
+      });
     }
     if (result.status === "invited") {
-      return reply
-        .code(409)
-        .send({
-          error: "You already have a pending invitation. Accept it to join.",
-          code: "INVITATION_PENDING",
-        });
+      return reply.code(409).send({
+        error: "You already have a pending invitation. Accept it to join.",
+        code: "INVITATION_PENDING",
+      });
     }
     if (result.status === "already-requested") {
-      return reply
-        .code(409)
-        .send({
-          error: "Your request is already waiting for the owner",
-          code: "REQUEST_ALREADY_PENDING",
-        });
+      return reply.code(409).send({
+        error: "Your request is already waiting for the owner",
+        code: "REQUEST_ALREADY_PENDING",
+      });
     }
     if (result.status === "already-decided") {
-      return reply
-        .code(409)
-        .send({
-          error: "The owner has already reviewed your request",
-          code: "REQUEST_ALREADY_REVIEWED",
-        });
+      return reply.code(409).send({
+        error: "The owner has already reviewed your request",
+        code: "REQUEST_ALREADY_REVIEWED",
+      });
     }
     if (result.status === "full") {
-      return reply
-        .code(409)
-        .send({
-          error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
-          code: "MEMBER_LIMIT_REACHED",
-        });
+      return reply.code(409).send({
+        error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
+        code: "MEMBER_LIMIT_REACHED",
+      });
     }
 
     if (result.status === "created") {
@@ -449,12 +435,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .code(404)
         .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
     if (!canManageMembers(role)) {
-      return reply
-        .code(403)
-        .send({
-          error: "Only the document owner can invite collaborators",
-          code: "OWNER_REQUIRED",
-        });
+      return reply.code(403).send({
+        error: "Only the document owner can invite collaborators",
+        code: "OWNER_REQUIRED",
+      });
     }
 
     const [document] = await db
@@ -479,12 +463,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);
     if (!target) {
-      return reply
-        .code(404)
-        .send({
-          error: "No account exists with that email address",
-          code: "USER_NOT_FOUND",
-        });
+      return reply.code(404).send({
+        error: "No account exists with that email address",
+        code: "USER_NOT_FOUND",
+      });
     }
 
     const result = await db.transaction(async (tx) => {
@@ -585,20 +567,16 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
     });
 
     if (result.status === "member") {
-      return reply
-        .code(409)
-        .send({
-          error: "This person already has access to the document",
-          code: "ALREADY_A_MEMBER",
-        });
+      return reply.code(409).send({
+        error: "This person already has access to the document",
+        code: "ALREADY_A_MEMBER",
+      });
     }
     if (result.status === "full") {
-      return reply
-        .code(409)
-        .send({
-          error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
-          code: "MEMBER_LIMIT_REACHED",
-        });
+      return reply.code(409).send({
+        error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
+        code: "MEMBER_LIMIT_REACHED",
+      });
     }
 
     if (result.notify) {
@@ -674,11 +652,39 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .limit(1);
       if (!member) return { status: "missing" as const };
 
-      await tx.insert(documentMembers).values({
-        documentId: id,
-        userId: request.user.id,
-        role: invitation.role,
-      });
+      const [existingMember] = await tx
+        .select({ userId: documentMembers.userId })
+        .from(documentMembers)
+        .where(
+          and(
+            eq(documentMembers.documentId, id),
+            eq(documentMembers.userId, request.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!existingMember) {
+        const currentMembers = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(documentMembers)
+          .where(eq(documentMembers.documentId, id));
+        const count = currentMembers[0]?.count ?? 0;
+        if (count >= MAX_DOCUMENT_MEMBERS) {
+          return { status: "full" as const };
+        }
+      }
+
+      await tx
+        .insert(documentMembers)
+        .values({
+          documentId: id,
+          userId: request.user.id,
+          role: invitation.role,
+        })
+        .onConflictDoUpdate({
+          target: [documentMembers.documentId, documentMembers.userId],
+          set: { role: invitation.role },
+        });
       await tx
         .delete(documentInvitations)
         .where(
@@ -701,13 +707,18 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       };
     });
 
+    if (result.status === "full") {
+      return reply.code(409).send({
+        error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
+        code: "MEMBER_LIMIT_REACHED",
+      });
+    }
+
     if (result.status === "missing") {
-      return reply
-        .code(404)
-        .send({
-          error: "No pending invitation was found",
-          code: "INVITATION_NOT_FOUND",
-        });
+      return reply.code(404).send({
+        error: "No pending invitation was found",
+        code: "INVITATION_NOT_FOUND",
+      });
     }
     if (result.status === "accepted") {
       const [document] = await db
@@ -744,12 +755,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           .code(404)
           .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
       if (!canManageMembers(role)) {
-        return reply
-          .code(403)
-          .send({
-            error: "Only the document owner can revoke invitations",
-            code: "OWNER_REQUIRED",
-          });
+        return reply.code(403).send({
+          error: "Only the document owner can revoke invitations",
+          code: "OWNER_REQUIRED",
+        });
       }
       const [document] = await db
         .select({ title: documents.title })
@@ -774,12 +783,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           userId: documentInvitations.userId,
         });
       if (!deleted) {
-        return reply
-          .code(404)
-          .send({
-            error: "Pending invitation not found",
-            code: "INVITATION_NOT_FOUND",
-          });
+        return reply.code(404).send({
+          error: "Pending invitation not found",
+          code: "INVITATION_NOT_FOUND",
+        });
       }
       await createNotification({
         userId: deleted.userId,
@@ -809,12 +816,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           .code(404)
           .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
       if (!canManageMembers(role)) {
-        return reply
-          .code(403)
-          .send({
-            error: "Only the document owner can review join requests",
-            code: "OWNER_REQUIRED",
-          });
+        return reply.code(403).send({
+          error: "Only the document owner can review join requests",
+          code: "OWNER_REQUIRED",
+        });
       }
       const [document] = await db
         .select({ title: documents.title })
@@ -856,24 +861,64 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           .limit(1);
         if (!member) return { status: "missing" as const };
 
-        await tx.insert(documentMembers).values({
-          documentId: id,
-          userId: member.userId,
-          role: memberRole,
-        });
+        const [existingMember] = await tx
+          .select({ userId: documentMembers.userId })
+          .from(documentMembers)
+          .where(
+            and(
+              eq(documentMembers.documentId, id),
+              eq(documentMembers.userId, member.userId),
+            ),
+          )
+          .limit(1);
+
+        if (!existingMember) {
+          const currentMembers = await tx
+            .select({ count: sql<number>`count(*)::int` })
+            .from(documentMembers)
+            .where(eq(documentMembers.documentId, id));
+          const count = currentMembers[0]?.count ?? 0;
+          if (count >= MAX_DOCUMENT_MEMBERS) {
+            return { status: "full" as const };
+          }
+        }
+
+        await tx
+          .insert(documentMembers)
+          .values({
+            documentId: id,
+            userId: member.userId,
+            role: memberRole,
+          })
+          .onConflictDoUpdate({
+            target: [documentMembers.documentId, documentMembers.userId],
+            set: { role: memberRole },
+          });
         await tx
           .delete(documentJoinRequests)
           .where(eq(documentJoinRequests.id, requestId));
+        await tx
+          .delete(documentInvitations)
+          .where(
+            and(
+              eq(documentInvitations.documentId, id),
+              eq(documentInvitations.userId, member.userId),
+            ),
+          );
         return { status: "approved" as const, member };
       });
 
       if (result.status === "missing") {
-        return reply
-          .code(404)
-          .send({
-            error: "Pending join request not found",
-            code: "REQUEST_NOT_FOUND",
-          });
+        return reply.code(404).send({
+          error: "Pending join request not found",
+          code: "REQUEST_NOT_FOUND",
+        });
+      }
+      if (result.status === "full") {
+        return reply.code(409).send({
+          error: `This document has reached its ${MAX_DOCUMENT_MEMBERS}-person capacity`,
+          code: "MEMBER_LIMIT_REACHED",
+        });
       }
       await publishAccessChanged({
         documentId: id,
@@ -887,9 +932,7 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         title: `${request.user.name} approved your request`,
         message: `You now have access to "${document.title}" as a ${memberRole}.`,
       });
-      return reply
-        .code(201)
-        .send({ ...result.member, role: memberRole });
+      return reply.code(201).send({ ...result.member, role: memberRole });
     },
   );
 
@@ -906,12 +949,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           .code(404)
           .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
       if (!canManageMembers(role)) {
-        return reply
-          .code(403)
-          .send({
-            error: "Only the document owner can review join requests",
-            code: "OWNER_REQUIRED",
-          });
+        return reply.code(403).send({
+          error: "Only the document owner can review join requests",
+          code: "OWNER_REQUIRED",
+        });
       }
       const [document] = await db
         .select({ title: documents.title })
@@ -938,12 +979,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
           userId: documentJoinRequests.userId,
         });
       if (!rejected) {
-        return reply
-          .code(404)
-          .send({
-            error: "Pending join request not found",
-            code: "REQUEST_NOT_FOUND",
-          });
+        return reply.code(404).send({
+          error: "Pending join request not found",
+          code: "REQUEST_NOT_FOUND",
+        });
       }
       await createNotification({
         userId: rejected.userId,
@@ -967,12 +1006,10 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .code(404)
         .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
     if (!canManageMembers(role)) {
-      return reply
-        .code(403)
-        .send({
-          error: "Only the document owner can manage members",
-          code: "OWNER_REQUIRED",
-        });
+      return reply.code(403).send({
+        error: "Only the document owner can manage members",
+        code: "OWNER_REQUIRED",
+      });
     }
 
     const [target] = await db
@@ -986,21 +1023,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);
     if (!target) {
-      return reply
-        .code(404)
-        .send({
-          error: "No account exists with that email address",
-          code: "USER_NOT_FOUND",
-        });
+      return reply.code(404).send({
+        error: "No account exists with that email address",
+        code: "USER_NOT_FOUND",
+      });
     }
 
     if ((await getDocumentRole(db, target.id, id)) === "owner") {
-      return reply
-        .code(409)
-        .send({
-          error: "Cannot change the owner's role",
-          code: "OWNER_ROLE_IMMUTABLE",
-        });
+      return reply.code(409).send({
+        error: "Cannot change the owner's role",
+        code: "OWNER_ROLE_IMMUTABLE",
+      });
     }
 
     const result = await db.transaction(async (tx) => {
@@ -1224,21 +1257,17 @@ export const documentRoutes: FastifyPluginAsync = async (app) => {
         .code(404)
         .send({ error: "Not found", code: "DOCUMENT_NOT_FOUND" });
     if (!canManageMembers(role)) {
-      return reply
-        .code(403)
-        .send({
-          error: "Only the document owner can manage members",
-          code: "OWNER_REQUIRED",
-        });
+      return reply.code(403).send({
+        error: "Only the document owner can manage members",
+        code: "OWNER_REQUIRED",
+      });
     }
 
     if ((await getDocumentRole(db, userId, id)) === "owner") {
-      return reply
-        .code(409)
-        .send({
-          error: "Cannot remove the owner",
-          code: "OWNER_CANNOT_BE_REMOVED",
-        });
+      return reply.code(409).send({
+        error: "Cannot remove the owner",
+        code: "OWNER_CANNOT_BE_REMOVED",
+      });
     }
 
     const [document] = await db

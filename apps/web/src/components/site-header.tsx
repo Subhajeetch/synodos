@@ -30,7 +30,8 @@ function DesktopGroup({
         if (event.pointerType === "mouse") onOpenChange(false);
       }}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onOpenChange(false);
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          onOpenChange(false);
       }}
     >
       <button
@@ -41,7 +42,13 @@ function DesktopGroup({
         className="site-nav-trigger"
       >
         {group.label}
-        <ChevronDown aria-hidden="true" className={open ? "site-nav-chevron site-nav-chevron-open" : "site-nav-chevron"} size={14} />
+        <ChevronDown
+          aria-hidden="true"
+          className={
+            open ? "site-nav-chevron site-nav-chevron-open" : "site-nav-chevron"
+          }
+          size={14}
+        />
       </button>
       {open && (
         <div className="site-nav-popover">
@@ -77,11 +84,17 @@ export function SiteHeader() {
   useEffect(() => {
     if (!openGroup) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (headerRef.current && !headerRef.current.contains(event.target as Node)) setOpenGroup(null);
+      if (
+        headerRef.current &&
+        !headerRef.current.contains(event.target as Node)
+      )
+        setOpenGroup(null);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      const trigger = headerRef.current?.querySelector<HTMLButtonElement>('button[aria-expanded="true"]');
+      const trigger = headerRef.current?.querySelector<HTMLButtonElement>(
+        'button[aria-expanded="true"]',
+      );
       if (headerRef.current?.contains(document.activeElement)) trigger?.focus();
       setOpenGroup(null);
     };
@@ -122,7 +135,11 @@ export function SiteHeader() {
     <>
       <header ref={headerRef} className="site-header">
         <div className="site-header-inner">
-          <Link to={LINKS.home} className="site-brand" aria-label="Synodos home">
+          <Link
+            to={LINKS.home}
+            className="site-brand"
+            aria-label="Synodos home"
+          >
             <Logo />
           </Link>
 
@@ -133,7 +150,9 @@ export function SiteHeader() {
                   key={entry.label}
                   group={entry}
                   open={openGroup === entry.label}
-                  onOpenChange={(open) => setOpenGroup(open ? entry.label : null)}
+                  onOpenChange={(open) =>
+                    setOpenGroup(open ? entry.label : null)
+                  }
                   activePath={pathname}
                 />
               ) : (
@@ -157,11 +176,18 @@ export function SiteHeader() {
               title={`Switch to ${isDark ? "light" : "dark"} theme`}
               onClick={() => setTheme(isDark ? "light" : "dark")}
             >
-              {isDark ? <Sun aria-hidden="true" size={17} /> : <Moon aria-hidden="true" size={17} />}
+              {isDark ? (
+                <Sun aria-hidden="true" size={17} />
+              ) : (
+                <Moon aria-hidden="true" size={17} />
+              )}
             </button>
-            <Link to={LINKS.login} className="site-login-link">{HEADER.login}</Link>
+            <Link to={LINKS.login} className="site-login-link">
+              {HEADER.login}
+            </Link>
             <Link to={LINKS.tryFree} className="site-header-cta">
-              {HEADER.cta}<ArrowUpRight aria-hidden="true" size={15} />
+              {HEADER.cta}
+              <ArrowUpRight aria-hidden="true" size={15} />
             </Link>
           </div>
 
@@ -174,7 +200,11 @@ export function SiteHeader() {
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
           >
-            {mobileOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+            {mobileOpen ? (
+              <X aria-hidden="true" size={20} />
+            ) : (
+              <Menu aria-hidden="true" size={20} />
+            )}
           </button>
         </div>
       </header>
@@ -212,15 +242,31 @@ export function SiteHeader() {
                     onClick={() => setMobileGroup(open ? null : entry.label)}
                   >
                     {entry.label}
-                    <ChevronDown aria-hidden="true" className={open ? "site-nav-chevron site-nav-chevron-open" : "site-nav-chevron"} size={16} />
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={
+                        open
+                          ? "site-nav-chevron site-nav-chevron-open"
+                          : "site-nav-chevron"
+                      }
+                      size={16}
+                    />
                   </button>
-                  <div className={open ? "site-mobile-subnav site-mobile-subnav-open" : "site-mobile-subnav"}>
+                  <div
+                    className={
+                      open
+                        ? "site-mobile-subnav site-mobile-subnav-open"
+                        : "site-mobile-subnav"
+                    }
+                  >
                     <ul id={panelId} aria-hidden={!open} inert={!open}>
                       {entry.items.map((item) => (
                         <li key={item.href}>
                           <Link
                             to={item.href}
-                            aria-current={pathname === item.href ? "page" : undefined}
+                            aria-current={
+                              pathname === item.href ? "page" : undefined
+                            }
                             onClick={closeMobile}
                           >
                             {item.label}
@@ -234,8 +280,13 @@ export function SiteHeader() {
             })}
           </nav>
           <div className="site-mobile-actions">
-            <Link to={LINKS.login} onClick={closeMobile}>{HEADER.login}</Link>
-            <Link to={LINKS.tryFree} onClick={closeMobile}>{HEADER.cta}<ArrowUpRight aria-hidden="true" size={16} /></Link>
+            <Link to={LINKS.login} onClick={closeMobile}>
+              {HEADER.login}
+            </Link>
+            <Link to={LINKS.tryFree} onClick={closeMobile}>
+              {HEADER.cta}
+              <ArrowUpRight aria-hidden="true" size={16} />
+            </Link>
           </div>
         </div>
       </div>

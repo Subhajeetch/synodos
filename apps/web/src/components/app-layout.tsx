@@ -33,7 +33,12 @@ export function AppLayout() {
           <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
             <DialogTrigger
               render={
-                <Button variant="ghost" size="icon" className="mr-2 md:hidden" aria-label="Open navigation" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-2 md:hidden"
+                  aria-label="Open navigation"
+                />
               }
             >
               <Menu className="size-5" />

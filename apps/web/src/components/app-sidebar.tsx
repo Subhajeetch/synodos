@@ -28,7 +28,11 @@ import { NotificationsDialog } from "./notifications-dialog";
 
 const docsLinks = [
   { label: "My documents", href: "/dashboard/overview", icon: FileText },
-  { label: "Shared with me", href: "/dashboard/overview?tab=shared", icon: Share2 },
+  {
+    label: "Shared with me",
+    href: "/dashboard/overview?tab=shared",
+    icon: Share2,
+  },
 ];
 
 const workspaceLinks = [
@@ -69,13 +73,21 @@ function SidebarLink({
       onClick={onNavigate}
       className={cn(
         "group relative flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        isActive && "bg-sidebar-accent/70 text-sidebar-accent-foreground shadow-sm",
+        isActive &&
+          "bg-sidebar-accent/70 text-sidebar-accent-foreground shadow-sm",
       )}
     >
       {isActive && (
         <span className="absolute inset-y-1 left-0 w-[3px] rounded-r-full bg-primary" />
       )}
-      <Icon className={cn("size-4 shrink-0 transition-colors duration-200", isActive ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-accent-foreground")} />
+      <Icon
+        className={cn(
+          "size-4 shrink-0 transition-colors duration-200",
+          isActive
+            ? "text-primary"
+            : "text-muted-foreground group-hover:text-sidebar-accent-foreground",
+        )}
+      />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -130,7 +142,9 @@ export function AppSidebar({
       <div className="px-4 py-2">
         <div className="flex h-9 w-full items-center gap-2 rounded-lg border border-border/50 bg-background/50 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent/50 cursor-not-allowed">
           <Search className="size-4 opacity-50" />
-          <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap opacity-70">Search...</span>
+          <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap opacity-70">
+            Search...
+          </span>
           <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
             <span className="text-xs">⌘</span>K
           </kbd>
@@ -179,7 +193,12 @@ export function AppSidebar({
       <div className="mt-auto border-t border-border/50 p-3">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring">
-            <UserAvatar name={user?.name} email={user?.email} className="size-8 rounded-md border border-border/50" />
+            <UserAvatar
+              name={user?.name}
+              email={user?.email}
+              image={user?.image}
+              className="size-8 rounded-md border border-border/50"
+            />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium leading-none">
                 {user?.name ?? "Your profile"}
@@ -189,11 +208,22 @@ export function AppSidebar({
               </span>
             </span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-[calc(var(--radix-dropdown-menu-trigger-width)+10px)] min-w-56 rounded-xl">
+          <DropdownMenuContent
+            side="top"
+            align="start"
+            className="w-[calc(var(--radix-dropdown-menu-trigger-width)+10px)] min-w-56 rounded-xl"
+          >
             <div className="flex items-center gap-3 px-3 py-2.5">
-              <UserAvatar name={user?.name} email={user?.email} className="size-9 rounded-md border border-border/50" />
+              <UserAvatar
+                name={user?.name}
+                email={user?.email}
+                image={user?.image}
+                className="size-9 rounded-md border border-border/50"
+              />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium leading-tight">{user?.name}</p>
+                <p className="truncate text-sm font-medium leading-tight">
+                  {user?.name}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {user?.email}
                 </p>
@@ -204,7 +234,11 @@ export function AppSidebar({
               <LifeBuoy className="mr-2 size-4" /> Help and feedback
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={signOut} className="cursor-pointer">
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={signOut}
+              className="cursor-pointer"
+            >
               <LogOut className="mr-2 size-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

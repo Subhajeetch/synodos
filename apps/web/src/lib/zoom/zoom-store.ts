@@ -39,7 +39,9 @@ export function logSliderToZoom(value: number, min = 0.25, max = 3) {
   const safeMin = Math.max(min, Number.EPSILON);
   const safeMax = Math.max(safeMin, max);
   const t = Math.min(1, Math.max(0, value));
-  return Math.exp(Math.log(safeMin) + t * (Math.log(safeMax) - Math.log(safeMin)));
+  return Math.exp(
+    Math.log(safeMin) + t * (Math.log(safeMax) - Math.log(safeMin)),
+  );
 }
 
 export function zoomToLogSlider(value: number, min = 0.25, max = 3) {

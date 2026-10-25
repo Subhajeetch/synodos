@@ -23,9 +23,7 @@ export type NotificationSummary = {
   createdAt: string;
 };
 
-export function canOpenNotificationDocument(
-  type: NotificationSummary["type"],
-) {
+export function canOpenNotificationDocument(type: NotificationSummary["type"]) {
   return [
     "document_invitation_received",
     "document_invitation_accepted",

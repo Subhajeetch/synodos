@@ -7,7 +7,10 @@ export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
       role="img"
       aria-label="Synodos"
       viewBox="0 0 850 200"
-      className={cn("text-foreground [--logo-background:var(--background)]", className)}
+      className={cn(
+        "text-foreground [--logo-background:var(--background)]",
+        className,
+      )}
       {...props}
     >
       <use href="/synodos-logo.svg#synodos-logo-art" />

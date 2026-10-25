@@ -1,5 +1,16 @@
-import { HERO_VISUAL, IMAGES, IMAGE_SPECS, LINKS } from "@/components/landing/content";
-import { Container, DemoImage, Reveal, Section, WindowFrame } from "@/components/landing/ui";
+import {
+  HERO_VISUAL,
+  IMAGES,
+  IMAGE_SPECS,
+  LINKS,
+} from "@/components/landing/content";
+import {
+  Container,
+  DemoImage,
+  Reveal,
+  Section,
+  WindowFrame,
+} from "@/components/landing/ui";
 import { YouTubeVideoDialog } from "@/components/landing/youtube-video-dialog";
 
 export function HeroVisualSection() {
@@ -24,7 +35,10 @@ export function HeroVisualSection() {
 
         <div className="mt-10 flex flex-col items-center gap-3 text-center md:mt-14">
           <p className="lp-muted text-[13px]">{HERO_VISUAL.hint}</p>
-          <YouTubeVideoDialog videoId={LINKS.ytVideoId} buttonLabel={HERO_VISUAL.button} />
+          <YouTubeVideoDialog
+            videoId={LINKS.ytVideoId}
+            buttonLabel={HERO_VISUAL.button}
+          />
         </div>
       </Container>
     </Section>

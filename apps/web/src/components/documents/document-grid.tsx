@@ -33,7 +33,10 @@ export function DocumentGrid({
     return (
       <div className={GRID}>
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="relative flex h-[164px] flex-col overflow-hidden rounded-xl border border-border/40 bg-card/30 p-5 shadow-sm">
+          <div
+            key={i}
+            className="relative flex h-[164px] flex-col overflow-hidden rounded-xl border border-border/40 bg-card/30 p-5 shadow-sm"
+          >
             <div className="absolute inset-x-0 top-0 h-1 w-full bg-muted" />
             <div className="mb-5 flex items-start justify-between gap-4 mt-1">
               <Skeleton className="size-10 rounded-lg" />
@@ -56,10 +59,16 @@ export function DocumentGrid({
           <EmptyMedia variant="icon" className="bg-primary/10 text-primary">
             <FileText className="size-6" />
           </EmptyMedia>
-          <EmptyTitle className="text-xl font-semibold tracking-tight">{emptyTitle}</EmptyTitle>
-          <EmptyDescription className="text-base text-muted-foreground max-w-sm mx-auto">{emptyHint}</EmptyDescription>
+          <EmptyTitle className="text-xl font-semibold tracking-tight">
+            {emptyTitle}
+          </EmptyTitle>
+          <EmptyDescription className="text-base text-muted-foreground max-w-sm mx-auto">
+            {emptyHint}
+          </EmptyDescription>
         </EmptyHeader>
-        {emptyAction && <EmptyContent className="mt-4">{emptyAction}</EmptyContent>}
+        {emptyAction && (
+          <EmptyContent className="mt-4">{emptyAction}</EmptyContent>
+        )}
       </Empty>
     );
   }

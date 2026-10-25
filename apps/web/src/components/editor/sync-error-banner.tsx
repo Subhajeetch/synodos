@@ -34,14 +34,20 @@ export function SyncErrorBanner({
       <AlertCircle className="size-5 text-destructive/80" />
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-destructive/90">
-          {lostAccess ? "You no longer have access to this document" : "Live sync is paused"}
+          {lostAccess
+            ? "You no longer have access to this document"
+            : "Live sync is paused"}
         </p>
-        <p className="text-muted-foreground mt-0.5">
-          {description}
-        </p>
+        <p className="text-muted-foreground mt-0.5">{description}</p>
       </div>
       {lostAccess ? (
-        <Button size="sm" variant="outline" className="border-destructive/20 text-destructive hover:bg-destructive/10" nativeButton={false} render={<Link to="/dashboard/overview" />}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-destructive/20 text-destructive hover:bg-destructive/10"
+          nativeButton={false}
+          render={<Link to="/dashboard/overview" />}
+        >
           Back to dashboard
         </Button>
       ) : (

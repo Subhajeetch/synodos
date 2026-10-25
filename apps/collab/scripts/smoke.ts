@@ -38,7 +38,8 @@ async function signIn(): Promise<string> {
       name: "Smoke Test",
     });
   }
-  if (!res.ok) throw new Error(`Sign-in failed: ${res.status} ${await res.text()}`);
+  if (!res.ok)
+    throw new Error(`Sign-in failed: ${res.status} ${await res.text()}`);
 
   return res.headers
     .getSetCookie()
@@ -62,7 +63,8 @@ async function createDoc(cookie: string): Promise<string> {
     headers: { "Content-Type": "application/json", cookie },
     body: JSON.stringify({ title: "Smoke test" }),
   });
-  if (!res.ok) throw new Error(`Create doc failed: ${res.status} ${await res.text()}`);
+  if (!res.ok)
+    throw new Error(`Create doc failed: ${res.status} ${await res.text()}`);
   return ((await res.json()) as { id: string }).id;
 }
 

@@ -82,22 +82,22 @@ export function NotificationToastListener() {
         action:
           notification.documentId &&
           canOpenNotificationDocument(notification.type)
-          ? {
-              label: "Open",
-              onClick: () => {
-                markNotificationRead.mutate(notification.id);
-                queryClient.removeQueries({
-                  queryKey: documentKeys.detail(notification.documentId!),
-                  exact: true,
-                });
-                queryClient.removeQueries({
-                  queryKey: documentKeys.access(notification.documentId!),
-                  exact: true,
-                });
-                navigate(`/docs/${notification.documentId}`);
-              },
-            }
-          : undefined,
+            ? {
+                label: "Open",
+                onClick: () => {
+                  markNotificationRead.mutate(notification.id);
+                  queryClient.removeQueries({
+                    queryKey: documentKeys.detail(notification.documentId!),
+                    exact: true,
+                  });
+                  queryClient.removeQueries({
+                    queryKey: documentKeys.access(notification.documentId!),
+                    exact: true,
+                  });
+                  navigate(`/docs/${notification.documentId}`);
+                },
+              }
+            : undefined,
       });
     }
 

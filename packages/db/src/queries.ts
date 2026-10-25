@@ -1,10 +1,12 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import type {
-  DocumentRole,
-  DocumentVersionSummary,
-} from "@synodos/shared";
+import type { DocumentRole, DocumentVersionSummary } from "@synodos/shared";
 import type { Database } from "./client";
-import { documentMembers, documentState, documentVersions, user } from "./schema";
+import {
+  documentMembers,
+  documentState,
+  documentVersions,
+  user,
+} from "./schema";
 
 /** The user's role on a document, or null if they have no access. */
 export async function getDocumentRole(
@@ -15,7 +17,12 @@ export async function getDocumentRole(
   const [row] = await db
     .select({ role: documentMembers.role })
     .from(documentMembers)
-    .where(and(eq(documentMembers.documentId, documentId), eq(documentMembers.userId, userId)))
+    .where(
+      and(
+        eq(documentMembers.documentId, documentId),
+        eq(documentMembers.userId, userId),
+      ),
+    )
     .limit(1);
   return row?.role ?? null;
 }
@@ -335,7 +342,9 @@ export async function getAdjacentDocumentVersion(
       ),
     )
     .orderBy(
-      newer ? asc(documentVersions.createdAt) : desc(documentVersions.createdAt),
+      newer
+        ? asc(documentVersions.createdAt)
+        : desc(documentVersions.createdAt),
       newer ? asc(documentVersions.id) : desc(documentVersions.id),
     )
     .limit(1);

@@ -7,9 +7,8 @@ describe("notification preferences store", () => {
   });
 
   it("returns a stable snapshot between preference updates", async () => {
-    const { getNotificationPreferences } = await import(
-      "./use-notification-preferences"
-    );
+    const { getNotificationPreferences } =
+      await import("./use-notification-preferences");
 
     expect(getNotificationPreferences()).toBe(getNotificationPreferences());
   });
@@ -19,9 +18,8 @@ describe("notification preferences store", () => {
       "synodos:notification-preferences",
       JSON.stringify({ popupEnabled: false, soundEnabled: false }),
     );
-    const { getNotificationPreferences } = await import(
-      "./use-notification-preferences"
-    );
+    const { getNotificationPreferences } =
+      await import("./use-notification-preferences");
     const preferences = getNotificationPreferences();
 
     expect(preferences.popupEnabled).toBe(false);
@@ -32,8 +30,8 @@ describe("notification preferences store", () => {
       access: true,
       system: true,
     });
-    expect(window.localStorage.getItem("synodos:notification-preferences")).toBe(
-      JSON.stringify(preferences),
-    );
+    expect(
+      window.localStorage.getItem("synodos:notification-preferences"),
+    ).toBe(JSON.stringify(preferences));
   });
 });

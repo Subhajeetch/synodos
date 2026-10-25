@@ -11,8 +11,7 @@ import {
 import { env } from "../env";
 
 type RequestResult<T> =
-  | { status: "timeout" }
-  | { status: "response"; result: T };
+  { status: "timeout" } | { status: "response"; result: T };
 
 async function requestCollaboration<T>(
   requestChannel: string,
@@ -22,6 +21,12 @@ async function requestCollaboration<T>(
 ): Promise<RequestResult<T>> {
   const publisher = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2 });
   const subscriber = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2 });
+  publisher.on("error", (err) =>
+    console.error("[redis] version publisher error:", err.message),
+  );
+  subscriber.on("error", (err) =>
+    console.error("[redis] version subscriber error:", err.message),
+  );
   const responseChannel = `${responsePrefix}${request.operationId}`;
 
   try {

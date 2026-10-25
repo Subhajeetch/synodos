@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 import {
   countDocumentVersions,
+  createDocumentVersion,
   getAdjacentDocumentVersion,
   eq,
   getDocumentRole,
@@ -10,6 +11,8 @@ import {
   getDocumentVersionCursor,
   getDocumentVersionPosition,
   listDocumentVersions,
+  loadDocumentState,
+  saveDocumentState,
   schema,
   updateDocumentVersionLabel,
 } from "@synodos/db";
@@ -53,7 +56,8 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
 
     let cursor: { createdAt: Date; id: string } | undefined;
     if (query.cursor) {
-      cursor = (await getDocumentVersionCursor(db, id, query.cursor)) ?? undefined;
+      cursor =
+        (await getDocumentVersionCursor(db, id, query.cursor)) ?? undefined;
       if (!cursor) {
         return reply.code(400).send({
           error: "The version history cursor is no longer valid",
@@ -99,7 +103,9 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/documents/:id/versions/:versionId/neighbor",
     async (request, reply) => {
-      const { id, versionId } = documentVersionParamsSchema.parse(request.params);
+      const { id, versionId } = documentVersionParamsSchema.parse(
+        request.params,
+      );
       const { direction } = versionNeighborQuerySchema.parse(request.query);
       const role = await getDocumentRole(db, request.user.id, id);
       if (!role) return reply.code(404).send({ error: "Not found" });
@@ -140,7 +146,8 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
       });
       if (result.status === "timeout") {
         return reply.code(503).send({
-          error: "The collaboration service is unavailable. No checkpoint was created.",
+          error:
+            "The collaboration service is unavailable. No checkpoint was created.",
           code: "COLLABORATION_UNAVAILABLE",
         });
       }
@@ -153,6 +160,39 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
             error: "This document is too large to checkpoint",
             code: "VERSION_TOO_LARGE",
           });
+        }
+        if (result.result.reason === "not-loaded") {
+          const state = await loadDocumentState(db, id);
+          if (!state) {
+            return reply.code(404).send({ error: "Document state not found" });
+          }
+          if (state.byteLength > MAX_VERSION_SIZE_BYTES) {
+            return reply.code(413).send({
+              error: "This document is too large to checkpoint",
+              code: "VERSION_TOO_LARGE",
+            });
+          }
+          const contentHash = createHash("sha256").update(state).digest("hex");
+          const created = await createDocumentVersion(db, {
+            documentId: id,
+            state,
+            contentHash,
+            label: body.label,
+            kind: "named",
+            createdBy: request.user.id,
+            contributors: [request.user.id],
+            operationId,
+          });
+          if (!created) {
+            return reply.code(503).send({
+              error: "The live document could not be checkpointed",
+              code: "CHECKPOINT_FAILED",
+            });
+          }
+          const version = await getDocumentVersion(db, id, created.id);
+          if (!version)
+            throw new Error("Created checkpoint could not be loaded");
+          return reply.code(201).send(withoutState(version));
         }
         return reply.code(503).send({
           error: "The live document could not be checkpointed",
@@ -167,9 +207,13 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
       if (!version) throw new Error("Created checkpoint could not be loaded");
       return reply.code(201).send(withoutState(version));
     } catch (error) {
-      request.log.error({ err: error, documentId: id }, "Checkpoint dispatch failed");
+      request.log.error(
+        { err: error, documentId: id },
+        "Checkpoint dispatch failed",
+      );
       return reply.code(503).send({
-        error: "The collaboration service is unavailable. No checkpoint was confirmed.",
+        error:
+          "The collaboration service is unavailable. No checkpoint was confirmed.",
         code: "COLLABORATION_UNAVAILABLE",
       });
     }
@@ -199,12 +243,16 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     "/documents/:id/versions/:versionId/restore",
     async (request, reply) => {
-      const { id, versionId } = documentVersionParamsSchema.parse(request.params);
+      const { id, versionId } = documentVersionParamsSchema.parse(
+        request.params,
+      );
       const body = restoreDocumentVersionSchema.parse(request.body);
       const role = await getDocumentRole(db, request.user.id, id);
       if (!role) return reply.code(404).send({ error: "Not found" });
       if (!canRestoreVersions(role)) {
-        return reply.code(403).send({ error: "Only the owner can restore versions" });
+        return reply
+          .code(403)
+          .send({ error: "Only the owner can restore versions" });
       }
 
       const [document] = await db
@@ -245,13 +293,16 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
         if (result.status === "timeout") {
           request.log.warn({ documentId: id }, "Live restore timed out");
           return reply.code(503).send({
-            error: "The collaboration service is unavailable. No restore was confirmed.",
+            error:
+              "The collaboration service is unavailable. No restore was confirmed.",
             code: "COLLABORATION_UNAVAILABLE",
           });
         }
         if (result.result.status === "failed") {
           if (result.result.reason === "not-owner") {
-            return reply.code(403).send({ error: "Only the owner can restore versions" });
+            return reply
+              .code(403)
+              .send({ error: "Only the owner can restore versions" });
           }
           if (result.result.reason === "version-not-found") {
             return reply.code(404).send({ error: "Not found" });
@@ -263,6 +314,42 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
               code: "DOCUMENT_CHANGED",
             });
           }
+          if (result.result.reason === "not-loaded") {
+            const target = await getDocumentVersion(db, id, versionId);
+            if (!target) return reply.code(404).send({ error: "Not found" });
+            const currentState = await loadDocumentState(db, id);
+            if (currentState) {
+              const currentHash = createHash("sha256")
+                .update(currentState)
+                .digest("hex");
+              await createDocumentVersion(db, {
+                documentId: id,
+                state: currentState,
+                contentHash: currentHash,
+                kind: "pre_restore",
+                createdBy: request.user.id,
+                contributors: [request.user.id],
+              });
+            }
+            await saveDocumentState(db, id, target.state);
+            const restoredHash = createHash("sha256")
+              .update(target.state)
+              .digest("hex");
+            const restoreVersion = await createDocumentVersion(db, {
+              documentId: id,
+              state: target.state,
+              contentHash: restoredHash,
+              kind: "restore",
+              createdBy: request.user.id,
+              contributors: [request.user.id],
+              restoredFromVersionId: versionId,
+              operationId: body.operationId,
+            });
+            return {
+              status: "restored" as const,
+              versionId: restoreVersion?.id,
+            };
+          }
           return reply.code(503).send({
             error: "The live document could not be restored",
             code: "RESTORE_FAILED",
@@ -273,9 +360,13 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
           versionId: result.result.versionId,
         };
       } catch (error) {
-        request.log.error({ err: error, documentId: id }, "Restore dispatch failed");
+        request.log.error(
+          { err: error, documentId: id },
+          "Restore dispatch failed",
+        );
         return reply.code(503).send({
-          error: "The collaboration service is unavailable. No restore was confirmed.",
+          error:
+            "The collaboration service is unavailable. No restore was confirmed.",
           code: "COLLABORATION_UNAVAILABLE",
         });
       }
