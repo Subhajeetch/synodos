@@ -1,29 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   HocuspocusProviderWebsocket,
   WebSocketStatus,
 } from "@hocuspocus/provider";
-import {
-  HocuspocusProviderWebsocketComponent,
-  HocuspocusRoom,
-  useHocuspocusEvent,
-} from "@hocuspocus/provider-react";
-import {
-  USER_EVENTS_ROOM_PREFIX,
-  notificationCreatedMessageSchema,
-} from "@synodos/shared";
-import { documentKeys } from "@/hooks/use-documents";
-import { notificationKey } from "@/hooks/use-notifications";
-import { authClient } from "@/lib/auth-client";
+import { HocuspocusProviderWebsocketComponent } from "@hocuspocus/provider-react";
 import { COLLAB_URL } from "@/lib/collab";
-import { getCollabToken } from "@/lib/collab";
 
-export function DashboardCollaboration({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function DashboardCollaboration({ children }: { children: ReactNode }) {
   const [websocket] = useState(
     () =>
       new HocuspocusProviderWebsocket({
@@ -33,7 +16,6 @@ export function DashboardCollaboration({
       }),
   );
   const destroyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { data: session } = authClient.useSession();
 
   useEffect(() => {
     if (destroyTimeoutRef.current) {
@@ -67,34 +49,7 @@ export function DashboardCollaboration({
 
   return (
     <HocuspocusProviderWebsocketComponent websocketProvider={websocket}>
-      {session?.user.id && (
-        <HocuspocusRoom
-          name={`${USER_EVENTS_ROOM_PREFIX}${session.user.id}`}
-          token={getCollabToken}
-        >
-          <DashboardNotificationEvents />
-        </HocuspocusRoom>
-      )}
       {children}
     </HocuspocusProviderWebsocketComponent>
   );
-}
-
-function DashboardNotificationEvents() {
-  const queryClient = useQueryClient();
-
-  useHocuspocusEvent("stateless", ({ payload }) => {
-    let message: unknown;
-    try {
-      message = JSON.parse(payload);
-    } catch {
-      return;
-    }
-    if (!notificationCreatedMessageSchema.safeParse(message).success) return;
-
-    void queryClient.invalidateQueries({ queryKey: notificationKey });
-    void queryClient.invalidateQueries({ queryKey: documentKeys.list() });
-  });
-
-  return null;
 }

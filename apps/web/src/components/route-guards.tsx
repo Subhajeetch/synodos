@@ -18,7 +18,13 @@ export function RequireAuth() {
 
   if (isPending) return <FullPageSpinner />;
   if (!session) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
+    );
   }
   return (
     <>

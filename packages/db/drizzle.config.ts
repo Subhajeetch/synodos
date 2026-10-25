@@ -2,9 +2,7 @@ import { defineConfig } from "drizzle-kit";
 
 try {
   process.loadEnvFile("../../.env"); //relative to packages/db
-} catch {
-  
-}
+} catch {}
 
 export default defineConfig({
   dialect: "postgresql",

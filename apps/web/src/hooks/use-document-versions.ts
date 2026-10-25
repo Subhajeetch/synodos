@@ -13,7 +13,8 @@ import { api } from "@/lib/api";
 
 export const versionKeys = {
   all: (documentId: string) => ["document-versions", documentId] as const,
-  list: (documentId: string) => [...versionKeys.all(documentId), "list"] as const,
+  list: (documentId: string) =>
+    [...versionKeys.all(documentId), "list"] as const,
   detail: (documentId: string, versionId: string) =>
     [...versionKeys.all(documentId), "detail", versionId] as const,
 };
@@ -31,7 +32,10 @@ export function useDocumentVersions(documentId: string) {
   });
 }
 
-export function useDocumentVersion(documentId: string, versionId: string | null) {
+export function useDocumentVersion(
+  documentId: string,
+  versionId: string | null,
+) {
   return useQuery({
     queryKey: versionKeys.detail(documentId, versionId ?? ""),
     queryFn: () =>

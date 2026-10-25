@@ -24,7 +24,12 @@ export function Container({
   className?: string;
 }) {
   return (
-    <div className={cx("mx-auto w-full max-w-[1200px] px-5 sm:px-8 lg:px-10", className)}>
+    <div
+      className={cx(
+        "mx-auto w-full max-w-[1200px] px-5 sm:px-8 lg:px-10",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -46,7 +51,10 @@ export function GradientBackdrop({
   imgClassName?: string;
 }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[#F8F8F8]">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 bg-[#F8F8F8]"
+    >
       <img
         src={src}
         alt=""
@@ -187,7 +195,13 @@ export function Button({
     <>
       {leading}
       {children}
-      {chevron && <ChevronRight aria-hidden="true" className="-mr-1 size-4" strokeWidth={2} />}
+      {chevron && (
+        <ChevronRight
+          aria-hidden="true"
+          className="-mr-1 size-4"
+          strokeWidth={2}
+        />
+      )}
     </>
   );
   if (as === "button") {
@@ -218,7 +232,13 @@ export function Highlight({
   children: ReactNode;
 }) {
   return (
-    <span className={cx("lp-highlight", color === "dark" && "lp-highlight--dark", className)}>
+    <span
+      className={cx(
+        "lp-highlight",
+        color === "dark" && "lp-highlight--dark",
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -381,7 +401,13 @@ export function AvatarGroup({
       {extra ? (
         <span
           className="inline-flex items-center justify-center rounded-full bg-[#ECECF0] px-1.5 text-xs font-medium text-[color:var(--lp-muted)] ring-2 ring-white"
-          style={{ position: "relative", zIndex: people.length + 1, marginLeft: -overlap, height: size, minWidth: size }}
+          style={{
+            position: "relative",
+            zIndex: people.length + 1,
+            marginLeft: -overlap,
+            height: size,
+            minWidth: size,
+          }}
         >
           +{extra}
         </span>
@@ -400,7 +426,11 @@ function TrafficLights() {
   return (
     <span aria-hidden="true" className="flex shrink-0 items-center gap-1.5">
       {TRAFFIC_LIGHTS.map((color) => (
-        <span key={color} className="size-2.5 rounded-full" style={{ backgroundColor: color }} />
+        <span
+          key={color}
+          className="size-2.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
       ))}
     </span>
   );
@@ -446,7 +476,15 @@ export function WindowFrame({
         : "rounded-2xl";
 
   return (
-    <div className={cx("overflow-hidden border", surface, radius, flatBottom && "border-b-0", className)}>
+    <div
+      className={cx(
+        "overflow-hidden border",
+        surface,
+        radius,
+        flatBottom && "border-b-0",
+        className,
+      )}
+    >
       {variant === "browser" ? (
         <div
           aria-hidden="true"
@@ -466,7 +504,9 @@ export function WindowFrame({
           <span className="mx-auto min-w-0 max-w-[380px] flex-1 truncate rounded-full bg-white px-3 py-1 text-center text-xs text-[color:var(--lp-muted)]">
             {url}
           </span>
-          <span className="hidden items-center gap-3 md:flex">{chromeRight}</span>
+          <span className="hidden items-center gap-3 md:flex">
+            {chromeRight}
+          </span>
           <EllipsisVertical className="size-4 shrink-0 text-[color:var(--lp-subtle)]" />
         </div>
       ) : (
@@ -482,7 +522,9 @@ export function WindowFrame({
             <span
               className={cx(
                 "pointer-events-none absolute inset-x-16 truncate text-center text-xs",
-                isDark ? "text-[color:var(--lp-dark-muted)]" : "text-[color:var(--lp-muted)]",
+                isDark
+                  ? "text-[color:var(--lp-dark-muted)]"
+                  : "text-[color:var(--lp-muted)]",
               )}
             >
               {title}
@@ -515,7 +557,10 @@ export function DemoImage({
 }) {
   return (
     <div
-      className={cx("relative w-full overflow-hidden bg-black/[0.03]", className)}
+      className={cx(
+        "relative w-full overflow-hidden bg-black/[0.03]",
+        className,
+      )}
       style={{ aspectRatio: spec.ratio }}
     >
       <img
@@ -589,7 +634,12 @@ export function Reveal({
 
 export function LogoMark({ className = "size-6" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
       <rect width="24" height="24" rx="7" fill="#0A0A0B" />
       <circle cx="9.6" cy="12" r="4.6" stroke="#FFFFFF" strokeWidth="1.8" />
       <circle cx="14.4" cy="12" r="4.6" stroke="#8F82FF" strokeWidth="1.8" />

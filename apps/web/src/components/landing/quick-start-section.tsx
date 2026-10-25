@@ -25,7 +25,8 @@ export function QuickStartSection() {
       <Container>
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-12">
           <h2 id="lp-quick-title" className="lp-display lp-h2 md:max-w-[640px]">
-            {QUICK_START.titleBefore} <Highlight color="dark">{QUICK_START.url}</Highlight>{" "}
+            {QUICK_START.titleBefore}{" "}
+            <Highlight color="dark">{QUICK_START.url}</Highlight>{" "}
             {QUICK_START.titleAfter}
           </h2>
           <p className="max-w-[260px] text-sm leading-relaxed text-[#2C2C3A]">

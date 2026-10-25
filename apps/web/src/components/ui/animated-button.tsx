@@ -1,11 +1,11 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva } from "class-variance-authority"
-import { motion, useReducedMotion, type Variants } from "motion/react"
-import { cn } from "cn"
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva } from "class-variance-authority";
+import { motion, useReducedMotion, type Variants } from "motion/react";
+import { cn } from "cn";
 
 const exportButtonVariants = cva(
-  "group/button relative isolate inline-flex h-10 shrink-0 items-center justify-center gap-2 overflow-hidden rounded-4xl border border-transparent bg-primary bg-clip-padding px-5 text-sm font-medium whitespace-nowrap text-primary-foreground shadow-sm shadow-primary/20 transition-[background-color,box-shadow] duration-200 outline-none select-none hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-)
+  "group/button relative isolate inline-flex h-10 shrink-0 items-center justify-center gap-2 overflow-hidden rounded-4xl border border-transparent bg-primary bg-clip-padding px-5 text-sm font-medium whitespace-nowrap text-primary-foreground shadow-sm shadow-primary/20 transition-[background-color,box-shadow] duration-200 outline-none select-none hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+);
 
 const arrowVariants: Variants = {
   rest: { y: 0, opacity: 1 },
@@ -18,7 +18,7 @@ const arrowVariants: Variants = {
       ease: ["easeIn", "linear", "easeOut"],
     },
   },
-}
+};
 
 const shineVariants: Variants = {
   rest: {
@@ -37,7 +37,7 @@ const shineVariants: Variants = {
       opacity: { duration: 0.1 },
     },
   },
-}
+};
 
 function ExportIcon() {
   return (
@@ -57,7 +57,7 @@ function ExportIcon() {
         <path d="m7 10 5 5 5-5" />
       </motion.g>
     </svg>
-  )
+  );
 }
 
 function Shine() {
@@ -68,7 +68,7 @@ function Shine() {
       style={{ skewX: -20 }}
       className="pointer-events-none absolute inset-y-0 left-0 -z-10 w-1/3 bg-linear-to-r from-transparent via-primary-foreground/25 to-transparent"
     />
-  )
+  );
 }
 
 function ExportButton({
@@ -76,7 +76,7 @@ function ExportButton({
   children = "Export document",
   ...props
 }: Omit<ButtonPrimitive.Props, "render">) {
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useReducedMotion();
 
   return (
     <ButtonPrimitive
@@ -98,7 +98,7 @@ function ExportButton({
       <span>{children}</span>
       <Shine />
     </ButtonPrimitive>
-  )
+  );
 }
 
-export { ExportButton }
+export { ExportButton };

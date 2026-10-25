@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { NodeViewContent, NodeViewWrapper, useEditorState } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  useEditorState,
+} from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { getPageRanges } from "./page-actions";
 import { PageControls } from "./page-controls";
@@ -16,7 +20,10 @@ export function PageNodeView({
       const position = getPos();
       if (typeof position !== "number") return { index: -1, count: 0 };
       const pages = getPageRanges(currentEditor.state.doc);
-      return { index: pages.findIndex((page) => page.from === position), count: pages.length };
+      return {
+        index: pages.findIndex((page) => page.from === position),
+        count: pages.length,
+      };
     },
     equalityFn: (a, b) =>
       a === b || (!!a && !!b && a.index === b.index && a.count === b.count),

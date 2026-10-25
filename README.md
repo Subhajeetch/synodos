@@ -1,159 +1,98 @@
-# Turborepo starter
+<p align="center">
+  <img src="assets/images/main-logo.png" alt="Synodos Logo" width="700" />
+</p>
+<p align="center">
+  <a href="https://github.com/Subhajeetch/synodos/commits/main"><img src="https://img.shields.io/github/last-commit/Subhajeetch/synodos?style=flat-square&color=3B82F6" alt="Last Commit" /></a>
+  <a href="https://discord.com/invite/6DhssCN2Ph"><img src="https://img.shields.io/badge/Discord-Join%20Chat-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord" /></a>
+  <a href="https://turbo.build/repo"><img src="https://img.shields.io/badge/Turborepo-EF4444?style=flat-square&logo=turborepo&logoColor=white" alt="Turborepo" /></a>
+  <a href="https://fastify.dev/"><img src="https://img.shields.io/badge/Fastify-000000?style=flat-square&logo=fastify&logoColor=white" alt="Fastify" /></a>
+  <a href="https://redis.io/"><img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis" /></a>
+  <a href="https://tiptap.dev/docs/hocuspocus/introduction"><img src="https://img.shields.io/badge/Hocuspocus-2563EB?style=flat-square&logo=socketdotio&logoColor=white" alt="Hocuspocus" /></a>
+  <a href="https://tiptap.dev/"><img src="https://img.shields.io/badge/Tiptap-000000?style=flat-square&logo=tiptap&logoColor=white" alt="Tiptap" /></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
+</p>
 
-This Turborepo starter is maintained by the Turborepo core team.
+---
 
-## Using this example
+## About
 
-Run the following command:
+Synodos is an open-source, real-time collaborative document editor for teams. It provides a fast, shared space where teammates can write, format text, and organize ideas together in the browser. Synodos is built for creators, product squads, and developers who need instant teamwork without distractions.
 
-```sh
-npx create-turbo@latest
-```
+> **Real-time** means any edit or cursor movement made by a teammate shows up on your screen immediately, without refreshing the page.
 
-## What's inside?
+### What's inside
 
-This Turborepo includes the following packages/apps:
+Synodos is arranged as a monorepo (one repository holding several related apps):
 
-### Apps and Packages
+- **`apps/web`**: The React user interface where you create documents and write with teammates.
+- **`apps/api`**: The Fastify server that manages user accounts, permissions, and database records.
+- **`apps/collab`**: The WebSocket server that broadcasts live edits and cursor positions across all active users.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+---
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## Demo Video
 
-### Utilities
+Watch the demo video to see Synodos in action:  
+https://youtu.be/ausL8Qs1C-g
 
-This Turborepo has some additional tools already setup for you:
+---
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## Screenshots
 
-### Build
+![Synodos Document Editor](assets/images/screenshot-1.png)
+![Synodos Document Editor In Action](assets/images/synodos-demo.gif)
 
-To build all apps and packages, run the following command:
+<details>
+<summary><b>Click to view more screenshots</b></summary>
+<br />
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+|                      Landing Page                       |                         Document Overview                          |
+| :-----------------------------------------------------: | :----------------------------------------------------------------: |
+| ![Landing Page Preview](assets/images/screenshot-2.png) | ![Document Overview and Dashboard](assets/images/screenshot-3.png) |
 
-```sh
-cd my-turborepo
-turbo build
-```
+|                     Dark Mode Editor                     |                       Version History                       |
+| :------------------------------------------------------: | :---------------------------------------------------------: |
+| ![Dark Mode Editor View](assets/images/screenshot-4.png) | ![Document Version History](assets/images/screenshot-5.png) |
 
-Without global `turbo`, use your package manager:
+|                              Dashboard                               |
+| :------------------------------------------------------------------: |
+| ![User Profile and Account Settings](assets/images/screenshot-6.png) |
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
-```
+</details>
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Getting Started
 
-```sh
-turbo build --filter=docs
-```
+To install Synodos and run it on your computer, check out our step-by-step setup guide:
 
-Without global `turbo`:
+👉 **[Read the Usage Guide (docs/USAGE.md)](docs/USAGE.md)**
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+### App Guides
 
-### Develop
+- **Web Frontend**: [apps/web README](apps/web/README.md)
+- **API Backend**: `apps/api` does not have its own README yet. Everything you need to run it is covered in the [Usage Guide](docs/USAGE.md).
+- **Collab Server**: `apps/collab` does not have its own README yet. Everything you need to run it is covered in the [Usage Guide](docs/USAGE.md).
 
-To develop all apps and packages, run the following command:
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Contributing
 
-```sh
-cd my-turborepo
-turbo dev
-```
+We welcome contributions of all kinds, including bug fixes, design improvements, and documentation help!
 
-Without global `turbo`, use your package manager:
+Please read our **[Contributing Guide (docs/CONTRIBUTING.md)](docs/CONTRIBUTING.md)** to learn how to set up your environment, write good commit messages, and open a pull request.
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
+---
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## Support
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+If you find Synodos helpful or exciting, please consider giving this repository a star ⭐ on GitHub!
 
-```sh
-turbo dev --filter=web
-```
+- Follow updates on X: [@subhajeetch](https://x.com/subhajeetch)
+- Join our community on Discord: [Join Chat](https://discord.com/invite/6DhssCN2Ph)
 
-Without global `turbo`:
+---
 
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+## License
 
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Synodos is free and open-source software released under the [MIT License](LICENSE).

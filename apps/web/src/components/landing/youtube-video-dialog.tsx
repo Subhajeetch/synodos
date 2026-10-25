@@ -90,7 +90,11 @@ export function YouTubeVideoDialog({
               aria-label="Close video"
               className="absolute top-full left-1/2 z-10 mt-5 inline-flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full bg-white/80 text-neutral-900 shadow-[0_8px_24px_-6px_rgba(10,10,11,0.3)] ring-1 ring-black/5 backdrop-blur-md transition-[background-color,scale] duration-200 hover:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900 active:scale-95 motion-reduce:transition-none sm:top-auto sm:right-0 sm:bottom-full sm:left-auto sm:mt-0 sm:mb-5 sm:translate-x-0"
             >
-              <X aria-hidden="true" className="size-[18px]" strokeWidth={2.25} />
+              <X
+                aria-hidden="true"
+                className="size-[18px]"
+                strokeWidth={2.25}
+              />
             </DialogPrimitive.Close>
 
             <AmbientGlow src={thumbnail} />

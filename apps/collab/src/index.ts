@@ -35,8 +35,10 @@ const env = z
 
 const port = env.COLLAB_PORT ?? env.PORT ?? 1234;
 
-const { db } = createDb(env.DATABASE_URL);
-const versionRedis = new RedisClient(env.REDIS_URL, { maxRetriesPerRequest: 2 });
+const { db, pool } = createDb(env.DATABASE_URL);
+const versionRedis = new RedisClient(env.REDIS_URL, {
+  maxRetriesPerRequest: 2,
+});
 versionRedis.on("error", (error) =>
   console.error("[versions] Redis lock error:", error.message),
 );
@@ -56,8 +58,10 @@ async function createAutoVersion(
   state: Uint8Array,
   force: boolean,
 ) {
+  const changesKey = `synodos:document-version-changes:${documentId}`;
+  if (!(await versionRedis.hexists(changesKey, "_dirty"))) return;
+
   await withDocumentVersionLock(documentId, async () => {
-    const changesKey = `synodos:document-version-changes:${documentId}`;
     const changes = await versionRedis.hgetall(changesKey);
     if (!changes._dirty) return;
     const sizeBytes = state.byteLength;
@@ -208,7 +212,6 @@ const server = new Server({
   maxDebounce: 10_000, // ...but never wait longer than 10s during continuous typing
 
   extensions: [
-
     new Redis({ ...redisConfigFromUrl(env.REDIS_URL), prefix: "synodos" }),
 
     new Database({
@@ -261,7 +264,10 @@ const server = new Server({
   },
 
   async onDisconnect({ documentName, clientsCount, document }) {
-    if (documentName.startsWith(USER_EVENTS_ROOM_PREFIX) || clientsCount !== 0) {
+    if (
+      documentName.startsWith(USER_EVENTS_ROOM_PREFIX) ||
+      clientsCount !== 0
+    ) {
       return;
     }
     try {
@@ -331,9 +337,10 @@ async function shutdown(signal: string) {
   console.log(`${signal} received, flushing pending stores…`);
   await stopListening();
   await stopVersionRestoreListener();
-  server.hocuspocus.flushPendingStores();
+  await server.hocuspocus.flushPendingStores();
   await server.destroy();
   await versionRedis.quit();
+  await pool.end();
   process.exit(0);
 }
 process.on("SIGINT", () => void shutdown("SIGINT"));

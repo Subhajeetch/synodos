@@ -6,7 +6,12 @@ import { Button, Container, Section } from "@/components/landing/ui";
 /** CTA and footer share one gradient backdrop, so the wrapper is a plain div. */
 export function CtaFooterSection() {
   return (
-    <Section as="div" corner="tr" gradient={{ src: IMAGES.gradients.cta }} pad="pb-6">
+    <Section
+      as="div"
+      corner="tr"
+      gradient={{ src: IMAGES.gradients.cta }}
+      pad="pb-6"
+    >
       <section aria-labelledby="lp-cta-title" className="pt-40 md:pt-56">
         <Container>
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-12">
@@ -24,7 +29,12 @@ export function CtaFooterSection() {
                 ))}
               </h2>
               <div className="mt-8">
-                <Button size="lg" chevron href={LINKS.tryFree} className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  chevron
+                  href={LINKS.tryFree}
+                  className="w-full sm:w-auto"
+                >
                   {CTA.button}
                 </Button>
               </div>

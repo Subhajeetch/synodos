@@ -16,7 +16,9 @@ export function FeatureTabsSection() {
     const list = listRef.current;
     const tab = tabRefs.current[active];
     if (!list || !tab) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     list.scrollTo({
       left: tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2,
       behavior: reduced ? "auto" : "smooth",
@@ -48,7 +50,10 @@ export function FeatureTabsSection() {
   };
 
   return (
-    <section aria-labelledby="lp-features-title" className="pb-32 pt-8 md:pb-48 md:pt-12">
+    <section
+      aria-labelledby="lp-features-title"
+      className="pb-32 pt-8 md:pb-48 md:pt-12"
+    >
       <Container className="text-center">
         <div
           ref={listRef}
@@ -82,7 +87,11 @@ export function FeatureTabsSection() {
                       : "text-[color:var(--lp-subtle)] group-hover:text-[color:var(--lp-muted)]"
                   }`}
                 >
-                  <tab.icon aria-hidden="true" className="size-5" strokeWidth={1.75} />
+                  <tab.icon
+                    aria-hidden="true"
+                    className="size-5"
+                    strokeWidth={1.75}
+                  />
                 </span>
                 <span
                   aria-hidden="true"
@@ -98,7 +107,10 @@ export function FeatureTabsSection() {
         </div>
 
         <Reveal>
-          <h2 id="lp-features-title" className="lp-display lp-h2 mx-auto mt-10 md:mt-12">
+          <h2
+            id="lp-features-title"
+            className="lp-display lp-h2 mx-auto mt-10 md:mt-12"
+          >
             {FEATURES.titleLines.map((line) => (
               <span key={line} className="block text-balance">
                 {line}

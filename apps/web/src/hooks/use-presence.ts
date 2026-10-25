@@ -23,7 +23,10 @@ type AwarenessUser = {
 
 export function usePresence(currentUserId: string | undefined): PresenceUser[] {
   const provider = useHocuspocusProvider();
-  const cache = useRef<{ currentUserId: string | undefined; users: PresenceUser[] }>({
+  const cache = useRef<{
+    currentUserId: string | undefined;
+    users: PresenceUser[];
+  }>({
     currentUserId,
     users: [],
   });
@@ -48,7 +51,8 @@ export function usePresence(currentUserId: string | undefined): PresenceUser[] {
         existing.connections += 1;
         if (user.isTyping) existing.isTyping = true;
         if (user.avatar) existing.avatar = user.avatar;
-        if (user.name && existing.name === "Anonymous") existing.name = user.name;
+        if (user.name && existing.name === "Anonymous")
+          existing.name = user.name;
       } else {
         byId.set(user.id, {
           id: user.id,
@@ -63,7 +67,8 @@ export function usePresence(currentUserId: string | undefined): PresenceUser[] {
       }
     }
     const next = [...byId.values()].sort(
-      (a, b) => Number(b.isYou) - Number(a.isYou) || a.name.localeCompare(b.name),
+      (a, b) =>
+        Number(b.isYou) - Number(a.isYou) || a.name.localeCompare(b.name),
     );
     const previous = cache.current;
     const unchanged =

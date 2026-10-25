@@ -16,7 +16,9 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <h3 className="text-[13px] font-semibold">{newsletter.heading}</h3>
-            <p className="lp-muted mt-3 max-w-[300px] text-sm leading-relaxed">{newsletter.body}</p>
+            <p className="lp-muted mt-3 max-w-[300px] text-sm leading-relaxed">
+              {newsletter.body}
+            </p>
             <form onSubmit={onSubmit} className="mt-4 flex max-w-sm gap-2">
               <label htmlFor="lp-newsletter-email" className="sr-only">
                 {newsletter.label}

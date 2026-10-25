@@ -30,7 +30,9 @@ export const versionCheckpointResultSchema = z.object({
   documentId: z.uuid(),
   status: z.enum(["created", "failed"]),
   versionId: z.uuid().optional(),
-  reason: z.enum(["not-loaded", "not-editor", "too-large", "failed"]).optional(),
+  reason: z
+    .enum(["not-loaded", "not-editor", "too-large", "failed"])
+    .optional(),
 });
 export const versionRestoreRequestSchema = z.object({
   operationId: z.uuid(),

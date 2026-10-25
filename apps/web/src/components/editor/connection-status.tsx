@@ -32,7 +32,13 @@ export function ConnectionStatus({ savedLocally }: { savedLocally: boolean }) {
       aria-live="polite"
     >
       <div className="relative flex size-2 items-center justify-center">
-        <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75", dot, animate && "animate-ping")} />
+        <span
+          className={cn(
+            "absolute inline-flex h-full w-full rounded-full opacity-75",
+            dot,
+            animate && "animate-ping",
+          )}
+        />
         <span className={cn("relative inline-flex size-2 rounded-full", dot)} />
       </div>
       {label}

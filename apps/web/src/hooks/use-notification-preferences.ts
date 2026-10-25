@@ -46,7 +46,8 @@ function normalizePreferences(raw: unknown): NotificationPreferences {
     presence:
       typeof value.categories === "object" &&
       value.categories !== null &&
-      typeof (value.categories as Record<string, unknown>).presence === "boolean"
+      typeof (value.categories as Record<string, unknown>).presence ===
+        "boolean"
         ? Boolean((value.categories as Record<string, unknown>).presence)
         : fallback.categories.presence,
     access:
@@ -77,7 +78,9 @@ function normalizePreferences(raw: unknown): NotificationPreferences {
         ? value.alwaysShowCursor
         : fallback.alwaysShowCursor,
     soundVolume: clampVolume(
-      typeof value.soundVolume === "number" ? value.soundVolume : fallback.soundVolume,
+      typeof value.soundVolume === "number"
+        ? value.soundVolume
+        : fallback.soundVolume,
     ),
     categories,
   };
@@ -158,9 +161,14 @@ export function useNotificationPreferences() {
     preferences,
     setSoundEnabled: (value: boolean) => setPreference("soundEnabled", value),
     setPopupEnabled: (value: boolean) => setPreference("popupEnabled", value),
-    setAlwaysShowCursor: (value: boolean) => setPreference("alwaysShowCursor", value),
-    setSoundVolume: (value: number) => setPreference("soundVolume", clampVolume(value)),
-    setCategoryPreference: (category: keyof NotificationCategoryPreferences, value: boolean) => {
+    setAlwaysShowCursor: (value: boolean) =>
+      setPreference("alwaysShowCursor", value),
+    setSoundVolume: (value: number) =>
+      setPreference("soundVolume", clampVolume(value)),
+    setCategoryPreference: (
+      category: keyof NotificationCategoryPreferences,
+      value: boolean,
+    ) => {
       const current = getPreferencesSnapshot();
       const next = {
         ...current,

@@ -30,7 +30,10 @@ export default function App() {
 
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />
+          <Route
+            path="/dashboard"
+            element={<Navigate to="/dashboard/overview" replace />}
+          />
           <Route path="/dashboard/overview" element={<OverviewPage />} />
           <Route path="/dashboard/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />

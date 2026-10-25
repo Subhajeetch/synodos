@@ -70,7 +70,10 @@ async function persistNotification(
   try {
     await publisher.publish(
       NOTIFICATION_CHANNEL,
-      JSON.stringify({ userId: notification.userId, notificationId: created.id }),
+      JSON.stringify({
+        userId: notification.userId,
+        notificationId: created.id,
+      }),
     );
   } catch (error) {
     console.error("[redis] failed to publish notification event:", error);

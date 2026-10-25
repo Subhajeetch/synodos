@@ -83,9 +83,7 @@ function PersistentCollaborationConnection({
   }, [provider]);
 
   return (
-    <HocuspocusProviderWebsocketComponent
-      websocketProvider={provider}
-    >
+    <HocuspocusProviderWebsocketComponent websocketProvider={provider}>
       {children}
     </HocuspocusProviderWebsocketComponent>
   );
@@ -192,7 +190,10 @@ export function EditorPage() {
           </>
         ) : status === "requested" ? (
           <>
-            <Loader2 className="size-8 text-primary" aria-hidden="true" />
+            <Loader2
+              className="size-6 text-primary animate-spin"
+              aria-hidden="true"
+            />
             <h1 className="text-xl font-semibold">Request pending</h1>
             <p className="max-w-sm text-sm text-muted-foreground">
               Your request has been sent to the document owner. You’ll be able

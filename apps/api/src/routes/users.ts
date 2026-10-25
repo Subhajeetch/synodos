@@ -30,6 +30,8 @@ const updateProfileSchema = z
   })
   .strict();
 
+const escapeIlike = (s: string) => s.replace(/[\\%_]/g, "\\$&");
+
 export const userRoutes: FastifyPluginAsync = async (app) => {
   app.addHook("preHandler", requireUser);
 
@@ -51,7 +53,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   // Search users in workspace by name or email
   app.get("/users/search", async (request) => {
     const { q } = searchQuerySchema.parse(request.query);
-    const pattern = `%${q}%`;
+    const pattern = `%${escapeIlike(q)}%`;
 
     const rows = await db
       .select({
@@ -68,22 +70,6 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
         ),
       )
       .limit(10);
-
-    return rows;
-  });
-
-  // List recent/suggested teammates for inviting
-  app.get("/users", async (request) => {
-    const rows = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        image: users.image,
-      })
-      .from(users)
-      .where(ne(users.id, request.user.id))
-      .limit(20);
 
     return rows;
   });
